@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import MetricCard from '../components/MetricCard';
@@ -12,6 +13,7 @@ import { categorizeMembers } from "@/utils/memberCategorization";
 import UpcomingRenewalsTable from "@/components/UpcomingRenewalsTable";
 import InactiveMembersTable from "@/components/InactiveMembersTable";
 import ActiveMembersDialog from "@/components/ActiveMembersDialog";
+import OverdueMembersDialog from "@/components/OverdueMembersDialog";
 
 const Index = () => {
   const { data: members, isLoading, error } = useQuery({
@@ -28,6 +30,7 @@ const Index = () => {
   const categorized = members ? categorizeMembers(members) : null;
 
   const [showActiveDialog, setShowActiveDialog] = useState(false);
+  const [showOverdueDialog, setShowOverdueDialog] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -63,6 +66,7 @@ const Index = () => {
               bgColor="bg-blue-50"
             />
           </div>
+          {/* Due for Renewal */}
           <MetricCard
             title="Due for Renewal"
             value={categorized ? categorized.dueSoon.length.toString() : "—"}
@@ -71,14 +75,17 @@ const Index = () => {
             icon={<Calendar className="h-5 w-5 text-orange-600" />}
             bgColor="bg-orange-50"
           />
-          <MetricCard
-            title="Overdue Renewals"
-            value={categorized ? categorized.overdue.length.toString() : "—"}
-            trend={{ value: "", isPositive: false }}
-            subtitle="Need Action"
-            icon={<Calendar className="h-5 w-5 text-red-600" />}
-            bgColor="bg-red-50"
-          />
+          {/* Overdue Renewals (clickable) */}
+          <div className="cursor-pointer" onClick={() => setShowOverdueDialog(true)}>
+            <MetricCard
+              title="Overdue Renewals"
+              value={categorized ? categorized.overdue.length.toString() : "—"}
+              trend={{ value: "", isPositive: false }}
+              subtitle="Need Action"
+              icon={<Calendar className="h-5 w-5 text-red-600" />}
+              bgColor="bg-red-50"
+            />
+          </div>
           <MetricCard
             title="Inactive"
             value={categorized ? categorized.inactive.length.toString() : "—"}
@@ -89,13 +96,20 @@ const Index = () => {
           />
         </div>
 
-        {/* Active Members Dialog */}
+        {/* Dialogs */}
         {categorized && (
-          <ActiveMembersDialog
-            open={showActiveDialog}
-            onOpenChange={setShowActiveDialog}
-            members={categorized.active}
-          />
+          <>
+            <ActiveMembersDialog
+              open={showActiveDialog}
+              onOpenChange={setShowActiveDialog}
+              members={categorized.active}
+            />
+            <OverdueMembersDialog
+              open={showOverdueDialog}
+              onOpenChange={setShowOverdueDialog}
+              members={categorized.overdue}
+            />
+          </>
         )}
 
         {/* Row 2: Detailed Member Insights */}
