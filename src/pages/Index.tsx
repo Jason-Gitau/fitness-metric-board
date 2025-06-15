@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import MetricCard from '../components/MetricCard';
@@ -14,6 +15,7 @@ import InactiveMembersTable from "@/components/InactiveMembersTable";
 import ActiveMembersDialog from "@/components/ActiveMembersDialog";
 import OverdueMembersDialog from "@/components/OverdueMembersDialog";
 import StreakLeaderboard from "@/components/StreakLeaderboard";
+import ChatWidget from "@/components/ChatWidget";
 
 const Index = () => {
   const { data: members, isLoading, error } = useQuery({
@@ -36,7 +38,6 @@ const Index = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Streak Leadership Board at the top */}
         <StreakLeaderboard />
 
         {/* Date Range Selector */}
@@ -154,6 +155,9 @@ const Index = () => {
           </div>
         </div>
       </main>
+
+      {/* Floating Chat Widget */}
+      <ChatWidget />
     </div>
   );
 };
