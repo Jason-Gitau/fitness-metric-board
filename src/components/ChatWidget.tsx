@@ -66,6 +66,13 @@ export default function ChatWidget() {
         throw new Error(`Server error: ${res.status}`);
       }
       const data = await res.json();
+      console.log("Webhook raw response:", data);
+      console.log(
+        "Is array?:",
+        Array.isArray(data),
+        "Output value:",
+        data?.[0]?.response?.body?.output
+      );
 
       // STRICT PARSING: only display the "output" field from response
       let botMsg: string;
