@@ -1,0 +1,64 @@
+# Fitness Metric Board
+
+A modern web application tailored for gyms to efficiently manage member information, visualize activity data, facilitate check-ins, and provide instant answers to gym-specific queries through an integrated chatbot.
+
+## Overview
+
+Fitness Metric Board empowers gym staff and management with actionable insights and streamlined workflows:
+
+- **Data Visualization:** Interactive dashboards display member stats, attendance patterns, and more.
+- **Member Registration:** Quick and easy on-boarding for new gym members.
+- **Member Check-in:** Digital check-in for members to track attendance and usage.
+- **Gym Chatbot:** Built-in AI chatbot answers common questions, assists with onboarding, and provides information unique to your gym.
+
+## Technology Stack
+
+- **Frontend:** React, TypeScript, Tailwind CSS, shadcn-ui
+- **Build Tooling:** Vite
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js and npm (see [nvm installation guide](https://github.com/nvm-sh/nvm#installing-and-updating))
+
+### Local Development
+
+```sh
+# Clone the repository
+git clone <YOUR_GIT_URL>
+cd fitness-metric-board
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+### Editing Code
+
+You can work on Fitness Metric Board using any of the following methods:
+
+- **Lovable Platform:** Edit and deploy instantly at [Lovable Project](https://lovable.dev/projects/029d44f9-aeec-46c7-9710-af12a49611b2).
+- **GitHub Web Editor:** Edit files directly in your browser.
+- **GitHub Codespaces:** Launch a cloud-based development environment for instant coding and testing.
+
+## Deployment
+
+Easily publish your project via Lovable:
+
+1. Go to [Lovable](https://lovable.dev/projects/029d44f9-aeec-46c7-9710-af12a49611b2).
+2. Click Share → Publish.
+
+## Custom Domains
+
+To connect a custom domain:
+
+1. Navigate to Project → Settings → Domains on Lovable.
+2. Click "Connect Domain" and follow the prompts.
+
+More details: [Custom Domain Guide](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+---
+*Empower your gym with smart member management, data-driven insights, and a conversational assistant—all in one platform!*
