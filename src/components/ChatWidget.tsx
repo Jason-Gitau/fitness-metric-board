@@ -54,7 +54,6 @@ export default function ChatWidget() {
     ]);
     setInput("");
     try {
-      // Send prompt and sessionId as POST request with JSON body
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -68,22 +67,16 @@ export default function ChatWidget() {
       }
       const data = await res.json();
 
-      // NEW: Parse expected array response for output string
-      // Expected: [{ response: { body: { output: ... } } }]
-      let botMsg: string | undefined;
-
-      if (Array.isArray(data) && data.length > 0 && data[0]?.response?.body?.output) {
+      // STRICT PARSING: only display the "output" field from response
+      let botMsg: string;
+      if (
+        Array.isArray(data) &&
+        data.length > 0 &&
+        data[0]?.response?.body?.output
+      ) {
         botMsg = data[0].response.body.output;
-      } else if (typeof data === "string") {
-        botMsg = data;
-      } else if (typeof data === "object" && data !== null) {
-        botMsg =
-          data.reply ||
-          data.response ||
-          data.message ||
-          "Bot replied!";
       } else {
-        botMsg = "Bot replied!";
+        botMsg = "Sorry, no message was returned.";
       }
 
       setMessages((prev) => [
