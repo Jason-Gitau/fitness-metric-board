@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Header from '../components/Header';
 import MetricCard from '../components/MetricCard';
 import MembershipChart from '../components/MembershipChart';
@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { categorizeMembers } from "@/utils/memberCategorization";
 import UpcomingRenewalsTable from "@/components/UpcomingRenewalsTable";
 import InactiveMembersTable from "@/components/InactiveMembersTable";
+import ActiveMembersDialog from "@/components/ActiveMembersDialog";
 
 const Index = () => {
   const { data: members, isLoading, error } = useQuery({
@@ -25,6 +26,8 @@ const Index = () => {
   });
 
   const categorized = members ? categorizeMembers(members) : null;
+
+  const [showActiveDialog, setShowActiveDialog] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -49,14 +52,17 @@ const Index = () => {
 
         {/* Row 1: Key Metrics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <MetricCard
-            title="Total Active"
-            value={categorized ? categorized.active.length.toString() : "—"}
-            trend={{ value: "", isPositive: true }}
-            subtitle="Active Members"
-            icon={<Users className="h-5 w-5 text-blue-600" />}
-            bgColor="bg-blue-50"
-          />
+          {/* Total Active (clickable) */}
+          <div className="cursor-pointer" onClick={() => setShowActiveDialog(true)}>
+            <MetricCard
+              title="Total Active"
+              value={categorized ? categorized.active.length.toString() : "—"}
+              trend={{ value: "", isPositive: true }}
+              subtitle="Active Members"
+              icon={<Users className="h-5 w-5 text-blue-600" />}
+              bgColor="bg-blue-50"
+            />
+          </div>
           <MetricCard
             title="Due for Renewal"
             value={categorized ? categorized.dueSoon.length.toString() : "—"}
@@ -82,6 +88,15 @@ const Index = () => {
             bgColor="bg-gray-100"
           />
         </div>
+
+        {/* Active Members Dialog */}
+        {categorized && (
+          <ActiveMembersDialog
+            open={showActiveDialog}
+            onOpenChange={setShowActiveDialog}
+            members={categorized.active}
+          />
+        )}
 
         {/* Row 2: Detailed Member Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
