@@ -40,16 +40,21 @@ export function categorizeMembers(members: TestMember[]) {
 
     let inactiveReasons = [];
 
-    // Inactive rule 1: membership expired 30+ days ago
-    if (endDate && isValid(endDate) && differenceInCalendarDays(now, endDate) > 30) {
-      inactiveReasons.push("Membership expired more than 30 days ago.");
-    }
+    // Do NOT mark as inactive if member attended in last 14 days
+    if (lastVisit && isValid(lastVisit) && differenceInCalendarDays(now, lastVisit) <= 14) {
+      // Recent attendance - not inactive, continue processing as normal member
+    } else {
+      // Inactive rule 1: membership expired 30+ days ago
+      if (endDate && isValid(endDate) && differenceInCalendarDays(now, endDate) > 30) {
+        inactiveReasons.push("Membership expired more than 30 days ago.");
+      }
 
-    // Inactive rule 2: last visit > 14 days ago or never visited
-    if (!lastVisit) {
-      inactiveReasons.push("No check-in record in the last 14 days.");
-    } else if (isValid(lastVisit) && differenceInCalendarDays(now, lastVisit) > 14) {
-      inactiveReasons.push("Last check-in was over 14 days ago.");
+      // Inactive rule 2: last visit > 14 days ago or never visited
+      if (!lastVisit) {
+        inactiveReasons.push("No check-in record in the last 14 days.");
+      } else if (isValid(lastVisit) && differenceInCalendarDays(now, lastVisit) > 14) {
+        inactiveReasons.push("Last check-in was over 14 days ago.");
+      }
     }
 
     if (inactiveReasons.length) {
@@ -90,4 +95,3 @@ export function categorizeMembers(members: TestMember[]) {
 
   return result;
 }
-
