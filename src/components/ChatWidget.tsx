@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Loader } from "lucide-react";
 import { Button } from "./ui/button";
@@ -10,7 +9,7 @@ interface Message {
   content: string;
 }
 
-const WEBHOOK_URL = "https://naturally-tolerant-leech.ngrok-free.app/webhook-test/2b96b579-fbec-4d91-8b0d-c342a14f187d";
+const WEBHOOK_URL = "https://naturally-tolerant-leech.ngrok-free.app/webhook/3f093103-0126-4075-84d0-438c4f191562/chat";
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -42,10 +41,10 @@ export default function ChatWidget() {
     ]);
     setInput("");
     try {
-      const res = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+      // Send prompt as GET request with prompt as query parameter
+      const url = `${WEBHOOK_URL}?prompt=${encodeURIComponent(prompt)}`;
+      const res = await fetch(url, {
+        method: "GET",
       });
       if (!res.ok) {
         throw new Error(`Server error: ${res.status}`);
