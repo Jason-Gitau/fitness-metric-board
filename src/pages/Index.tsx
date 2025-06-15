@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import MetricCard from '../components/MetricCard';
@@ -14,6 +13,7 @@ import UpcomingRenewalsTable from "@/components/UpcomingRenewalsTable";
 import InactiveMembersTable from "@/components/InactiveMembersTable";
 import ActiveMembersDialog from "@/components/ActiveMembersDialog";
 import OverdueMembersDialog from "@/components/OverdueMembersDialog";
+import StreakLeaderboard from "@/components/StreakLeaderboard";
 
 const Index = () => {
   const { data: members, isLoading, error } = useQuery({
@@ -35,8 +35,10 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Streak Leadership Board at the top */}
+        <StreakLeaderboard />
+
         {/* Date Range Selector */}
         <div className="mb-8 flex items-center justify-between">
           <div>
