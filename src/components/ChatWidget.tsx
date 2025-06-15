@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Loader } from "lucide-react";
 import { Button } from "./ui/button";
@@ -68,10 +67,25 @@ export default function ChatWidget() {
         throw new Error(`Server error: ${res.status}`);
       }
       const data = await res.json();
-      const botMsg =
-        typeof data === "string"
-          ? data
-          : data.reply || data.response || data.message || "Bot replied!";
+
+      // NEW: Parse expected array response for output string
+      // Expected: [{ response: { body: { output: ... } } }]
+      let botMsg: string | undefined;
+
+      if (Array.isArray(data) && data.length > 0 && data[0]?.response?.body?.output) {
+        botMsg = data[0].response.body.output;
+      } else if (typeof data === "string") {
+        botMsg = data;
+      } else if (typeof data === "object" && data !== null) {
+        botMsg =
+          data.reply ||
+          data.response ||
+          data.message ||
+          "Bot replied!";
+      } else {
+        botMsg = "Bot replied!";
+      }
+
       setMessages((prev) => [
         ...prev,
         {
