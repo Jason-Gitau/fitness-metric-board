@@ -1,10 +1,23 @@
 
-import React from 'react';
-import { Search, User, Bell } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Bell, Menu } from 'lucide-react';
+import RegisterMemberForm from './RegisterMemberForm';
+import { Button } from "@/components/ui/button";
 
 const Header = () => {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close the menu when drawer opens
+  const handleMenuClick = () => setMenuOpen(!menuOpen);
+
+  const handleRegisterClick = () => {
+    setDrawerOpen(true);
+    setMenuOpen(false);
+  };
+
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-white border-b border-gray-200 px-6 py-4 relative">
       <div className="flex items-center justify-between">
         {/* Logo/Title */}
         <div className="flex items-center">
@@ -13,7 +26,6 @@ const Header = () => {
           </div>
           <h1 className="text-xl font-semibold text-gray-900">Gym CRM Dashboard</h1>
         </div>
-
         {/* Search Bar */}
         <div className="flex-1 max-w-lg mx-8">
           <div className="relative">
@@ -25,17 +37,37 @@ const Header = () => {
             />
           </div>
         </div>
-
-        {/* User Profile/Settings */}
+        {/* Actions/Notifications + Hamburger */}
         <div className="flex items-center space-x-4">
           <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
             <Bell className="h-5 w-5" />
           </button>
-          <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-            <User className="h-5 w-5" />
-          </button>
+          {/* Hamburger menu */}
+          <div className="relative">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleMenuClick}
+              aria-label="Open menu"
+              className="text-gray-500 hover:text-blue-600"
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border rounded-md shadow z-50">
+                <button
+                  onClick={handleRegisterClick}
+                  className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100"
+                >
+                  Register a new member
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+      {/* Register Drawer */}
+      <RegisterMemberForm open={drawerOpen} onOpenChange={setDrawerOpen} />
     </header>
   );
 };
