@@ -4,13 +4,23 @@ import { MessageCircle, X, Loader } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 
+// Helper function to generate a pseudo-unique session id
+function generateSessionId() {
+  return (
+    "sess_" +
+    Math.random().toString(36).substring(2, 10) +
+    Date.now().toString(36)
+  );
+}
+
 interface Message {
   id: string;
   from: "user" | "bot";
   content: string;
 }
 
-const WEBHOOK_URL = "https://naturally-tolerant-leech.ngrok-free.app/webhook-test/d14345ad-fdb3-494f-ac97-9b84245b60b8";
+const WEBHOOK_URL =
+  "https://naturally-tolerant-leech.ngrok-free.app/webhook-test/d14345ad-fdb3-494f-ac97-9b84245b60b8";
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -19,6 +29,9 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Generate session ID on first mount
+  const [sessionId] = useState(() => generateSessionId());
 
   useEffect(() => {
     if (open && bottomRef.current) {
@@ -42,19 +55,23 @@ export default function ChatWidget() {
     ]);
     setInput("");
     try {
-      // Send prompt as POST request with JSON body
+      // Send prompt and sessionId as POST request with JSON body
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({
+          prompt,
+          sessionId,
+        }),
       });
       if (!res.ok) {
         throw new Error(`Server error: ${res.status}`);
       }
       const data = await res.json();
-      const botMsg = typeof data === "string"
-        ? data
-        : data.reply || data.response || data.message || "Bot replied!";
+      const botMsg =
+        typeof data === "string"
+          ? data
+          : data.reply || data.response || data.message || "Bot replied!";
       setMessages((prev) => [
         ...prev,
         {
@@ -93,9 +110,7 @@ export default function ChatWidget() {
 
       {/* Chat Window */}
       {open && (
-        <div
-          className="fixed z-50 bottom-6 right-6 w-[350px] max-w-[92vw] bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col animate-fade-in"
-        >
+        <div className="fixed z-50 bottom-6 right-6 w-[350px] max-w-[92vw] bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col animate-fade-in">
           <div className="flex items-center justify-between px-4 py-3 border-b bg-blue-600 rounded-t-xl">
             <div className="flex items-center gap-2 text-white font-bold">
               <MessageCircle className="w-5 h-5" /> Chat Assistant
@@ -108,8 +123,10 @@ export default function ChatWidget() {
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex-1 flex flex-col px-3 py-2 overflow-y-auto max-h-[350px]"
-               style={{ minHeight: "160px" }}>
+          <div
+            className="flex-1 flex flex-col px-3 py-2 overflow-y-auto max-h-[350px]"
+            style={{ minHeight: "160px" }}
+          >
             <div className="flex flex-col gap-2">
               {messages.length === 0 && (
                 <div className="text-gray-400 text-sm mt-2 text-center">
@@ -147,7 +164,7 @@ export default function ChatWidget() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) handleSend(e);
               }}
-              />
+            />
             <Button
               type="submit"
               disabled={loading || !input.trim()}
