@@ -2,17 +2,24 @@
 import React, { useState } from 'react';
 import { Search, Bell, Menu } from 'lucide-react';
 import RegisterMemberForm from './RegisterMemberForm';
+import MemberCheckInDialog from './MemberCheckInDialog';
 import { Button } from "@/components/ui/button";
 
 const Header = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
-  // Close the menu when drawer opens
+  // Close the menu when drawer or check-in opens
   const handleMenuClick = () => setMenuOpen(!menuOpen);
 
   const handleRegisterClick = () => {
     setDrawerOpen(true);
+    setMenuOpen(false);
+  };
+
+  const handleCheckInClick = () => {
+    setCheckInOpen(true);
     setMenuOpen(false);
   };
 
@@ -61,6 +68,12 @@ const Header = () => {
                 >
                   Register a new member
                 </button>
+                <button
+                  onClick={handleCheckInClick}
+                  className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 border-t"
+                >
+                  Member check in
+                </button>
               </div>
             )}
           </div>
@@ -68,6 +81,8 @@ const Header = () => {
       </div>
       {/* Register Drawer */}
       <RegisterMemberForm open={drawerOpen} onOpenChange={setDrawerOpen} />
+      {/* Member Check-In Dialog */}
+      <MemberCheckInDialog open={checkInOpen} onOpenChange={setCheckInOpen} />
     </header>
   );
 };
