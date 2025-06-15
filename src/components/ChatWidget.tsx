@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Loader } from "lucide-react";
 import { Button } from "./ui/button";
@@ -67,23 +68,20 @@ export default function ChatWidget() {
       }
       const data = await res.json();
       console.log("Webhook raw response:", data);
-      console.log(
-        "Is array?:",
-        Array.isArray(data),
-        "Output value:",
-        data?.[0]?.response?.body?.output
-      );
 
-      // STRICT PARSING: only display the "output" field from response
+      // Always normalize data to an array
+      const arr = Array.isArray(data) ? data : [data];
+      const output = arr[0]?.response?.body?.output;
+
+      // Show output if present, otherwise display the full webhook raw data for debugging
       let botMsg: string;
-      if (
-        Array.isArray(data) &&
-        data.length > 0 &&
-        data[0]?.response?.body?.output
-      ) {
-        botMsg = data[0].response.body.output;
+      if (typeof output === "string" && output.trim()) {
+        botMsg = output;
       } else {
-        botMsg = "Sorry, no message was returned.";
+        // Show the whole data for easier debugging if output missing
+        botMsg =
+          "No 'output' field found. Full webhook data:\n" +
+          JSON.stringify(data, null, 2);
       }
 
       setMessages((prev) => [
@@ -202,3 +200,5 @@ export default function ChatWidget() {
     </>
   );
 }
+
+// ... (end of file)
