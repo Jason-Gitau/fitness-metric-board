@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Header from '../components/Header';
 import MetricCard from '../components/MetricCard';
@@ -7,8 +6,26 @@ import AcquisitionChart from '../components/AcquisitionChart';
 import UpcomingRenewals from '../components/UpcomingRenewals';
 import PaymentOverview from '../components/PaymentOverview';
 import { Users, UserCheck, DollarSign, Calendar } from 'lucide-react';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { categorizeMembers } from "@/utils/memberCategorization";
+import UpcomingRenewalsTable from "@/components/UpcomingRenewalsTable";
+import InactiveMembersTable from "@/components/InactiveMembersTable";
 
 const Index = () => {
+  const { data: members, isLoading, error } = useQuery({
+    queryKey: ["test_members"],
+    queryFn: async () => {
+      let { data, error } = await supabase
+        .from("test_members")
+        .select("*");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const categorized = members ? categorizeMembers(members) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -33,36 +50,36 @@ const Index = () => {
         {/* Row 1: Key Metrics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
-            title="Total Members"
-            value="5,684"
-            trend={{ value: "10 daily", isPositive: true }}
-            subtitle="As of today"
+            title="Total Active"
+            value={categorized ? categorized.active.length.toString() : "—"}
+            trend={{ value: "", isPositive: true }}
+            subtitle="Active Members"
             icon={<Users className="h-5 w-5 text-blue-600" />}
             bgColor="bg-blue-50"
           />
           <MetricCard
-            title="Active Members"
-            value="4,900"
-            trend={{ value: "5 daily", isPositive: true }}
-            subtitle="Currently active"
-            icon={<UserCheck className="h-5 w-5 text-green-600" />}
-            bgColor="bg-green-50"
-          />
-          <MetricCard
-            title="Revenue (Month)"
-            value="Ksh 1,250,000"
-            trend={{ value: "12%", isPositive: true }}
-            subtitle="This Month"
-            icon={<DollarSign className="h-5 w-5 text-purple-600" />}
-            bgColor="bg-purple-50"
-          />
-          <MetricCard
-            title="Total Visits"
-            value="15,000"
-            trend={{ value: "8% this week", isPositive: true }}
-            subtitle="Current Month"
+            title="Due for Renewal"
+            value={categorized ? categorized.dueSoon.length.toString() : "—"}
+            trend={{ value: "", isPositive: false }}
+            subtitle="7 days"
             icon={<Calendar className="h-5 w-5 text-orange-600" />}
             bgColor="bg-orange-50"
+          />
+          <MetricCard
+            title="Overdue Renewals"
+            value={categorized ? categorized.overdue.length.toString() : "—"}
+            trend={{ value: "", isPositive: false }}
+            subtitle="Need Action"
+            icon={<Calendar className="h-5 w-5 text-red-600" />}
+            bgColor="bg-red-50"
+          />
+          <MetricCard
+            title="Inactive"
+            value={categorized ? categorized.inactive.length.toString() : "—"}
+            trend={{ value: "", isPositive: false }}
+            subtitle="No visit/expired"
+            icon={<Users className="h-5 w-5 text-gray-400" />}
+            bgColor="bg-gray-100"
           />
         </div>
 
@@ -72,10 +89,38 @@ const Index = () => {
           <AcquisitionChart />
         </div>
 
-        {/* Row 3: Operational & Financial Insights */}
+        {/* Row 3: Operational & Financial Insights (now dynamic) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <UpcomingRenewals />
-          <PaymentOverview />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
+            {isLoading && (
+              <div className="flex items-center justify-center flex-1 py-12 text-gray-400">
+                Loading...
+              </div>
+            )}
+            {error && (
+              <div className="flex items-center justify-center flex-1 py-12 text-red-500">
+                Failed to fetch members.
+              </div>
+            )}
+            {!isLoading && !error && categorized && (
+              <UpcomingRenewalsTable dueSoonMembers={categorized.dueSoon} />
+            )}
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
+            {isLoading && (
+              <div className="flex items-center justify-center flex-1 py-12 text-gray-400">
+                Loading...
+              </div>
+            )}
+            {error && (
+              <div className="flex items-center justify-center flex-1 py-12 text-red-500">
+                Failed to fetch members.
+              </div>
+            )}
+            {!isLoading && !error && categorized && (
+              <InactiveMembersTable inactiveMembers={categorized.inactive} />
+            )}
+          </div>
         </div>
       </main>
     </div>
