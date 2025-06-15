@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { supabase } from "@/integrations/supabase/client";
 
 // Membership and Payment Status options
 const membershipTypes = ["Monthly", "Yearly", "Weekly", "Daily", "Quarterly"];
@@ -18,6 +18,8 @@ interface RegisterMemberFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const EXTERNAL_WEBHOOK_URL = "https://naturally-tolerant-leech.ngrok-free.app/webhook-test/ba3b058f-268f-4e28-8000-702c42e4f4d8";
 
 const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenChange }) => {
   const [form, setForm] = useState({
@@ -32,12 +34,25 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
-  // Show amount paid field only if 'Paid' is selected
+  // Use Supabase's user session to control registration visibility
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+    // Optional: listen to auth events if needed
+  }, []);
+
+  // Show amount paid only if "Paid" is selected
   const showAmountPaid = form.paymentStatus === "Paid";
 
+  const sanitizeInput = (value: string) => value.trim().replace(/[<>]/g, "");
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm({ ...form, [e.target.name]: sanitizeInput(e.target.value) });
   };
 
   const handleDateChange = (date: Date | undefined) => {
@@ -47,6 +62,7 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Input validation and sanitization
     if (!form.phone || !form.fullName || !form.membershipType || !form.membershipStart || !form.paymentStatus || !form.whatsappConsent) {
       toast({ title: "Error", description: "Please fill all required fields.", variant: "destructive" });
       return;
@@ -59,6 +75,7 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
     setSubmitting(true);
 
     try {
+      // Webhook payload: all fields sanitized above
       const payload = {
         phone: form.phone,
         fullName: form.fullName,
@@ -70,7 +87,8 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
         referrerId: form.referrerId
       };
 
-      const res = await fetch("https://naturally-tolerant-leech.ngrok-free.app/webhook-test/ba3b058f-268f-4e28-8000-702c42e4f4d8", {
+      // For the webhook, strongly recommend restricting this endpoint and validating signatures
+      const res = await fetch(EXTERNAL_WEBHOOK_URL, {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -96,6 +114,27 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
       setSubmitting(false);
     }
   };
+
+  // Only show the form for authenticated users
+  if (!user) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Register a New Member</DrawerTitle>
+          </DrawerHeader>
+          <div className="p-4 text-red-600">
+            You must be logged in to register a new member.
+          </div>
+          <DrawerClose asChild>
+            <Button type="button" variant="ghost">
+              Close
+            </Button>
+          </DrawerClose>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -218,4 +257,3 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
 };
 
 export default RegisterMemberForm;
-
