@@ -1,16 +1,20 @@
 
 import React, { useState } from 'react';
-import { Search, Bell, Menu } from 'lucide-react';
+import { Search, Bell, Menu, LogOut, LogIn } from 'lucide-react';
 import RegisterMemberForm from './RegisterMemberForm';
 import MemberCheckInDialog from './MemberCheckInDialog';
 import { Button } from "@/components/ui/button";
+import { useAuthState } from "@/hooks/useAuthState";
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 const Header = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [checkInOpen, setCheckInOpen] = useState(false);
+  const { user, loading } = useAuthState();
+  const navigate = useNavigate();
 
-  // Close the menu when drawer or check-in opens
   const handleMenuClick = () => setMenuOpen(!menuOpen);
 
   const handleRegisterClick = () => {
@@ -21,6 +25,15 @@ const Header = () => {
   const handleCheckInClick = () => {
     setCheckInOpen(true);
     setMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
+  const goToLogin = () => {
+    navigate("/auth");
   };
 
   return (
@@ -49,6 +62,32 @@ const Header = () => {
           <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
             <Bell className="h-5 w-5" />
           </button>
+          {/* Show Login/Logout */}
+          {!loading && (
+            user ? (
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="Logout"
+                onClick={handleLogout}
+                className="text-gray-500 hover:text-red-600"
+                title="Logout"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            ) : (
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="Login"
+                onClick={goToLogin}
+                className="text-gray-500 hover:text-blue-600"
+                title="Login"
+              >
+                <LogIn className="h-5 w-5" />
+              </Button>
+            )
+          )}
           {/* Hamburger menu */}
           <div className="relative">
             <Button

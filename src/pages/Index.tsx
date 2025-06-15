@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import MetricCard from '../components/MetricCard';
 import MembershipChart from '../components/MembershipChart';
@@ -16,6 +15,8 @@ import ActiveMembersDialog from "@/components/ActiveMembersDialog";
 import OverdueMembersDialog from "@/components/OverdueMembersDialog";
 import StreakLeaderboard from "@/components/StreakLeaderboard";
 import ChatWidget from "@/components/ChatWidget";
+import { useAuthState } from "@/hooks/useAuthState";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const { data: members, isLoading, error } = useQuery({
@@ -33,6 +34,16 @@ const Index = () => {
 
   const [showActiveDialog, setShowActiveDialog] = useState(false);
   const [showOverdueDialog, setShowOverdueDialog] = useState(false);
+
+  const { user, loading } = useAuthState();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    // If not logged in and not loading, redirect to /auth
+    if (!user && !loading) {
+      navigate("/auth");
+    }
+  }, [user, loading, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -154,4 +165,3 @@ const Index = () => {
 };
 
 export default Index;
-
