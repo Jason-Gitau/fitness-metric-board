@@ -1,7 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Loader } from "lucide-react";
+
+import React, { useState } from "react";
+import { MessageCircle, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import { extractOutput } from "./chatHelpers";
+import { ChatMessages } from "./ChatMessages";
+import { ChatInputForm } from "./ChatInputForm";
 
 // Helper function to generate a pseudo-unique session id
 function generateSessionId() {
@@ -27,35 +31,7 @@ export default function ChatWidget() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-
-  // Generate session ID on first mount
   const [sessionId] = useState(() => generateSessionId());
-
-  // Helper to reliably find first output field in arbitrary response object
-  function extractOutput(obj: any): string | null {
-    if (!obj || typeof obj !== "object") return null;
-    if (typeof obj.output === "string" && obj.output.trim()) return obj.output;
-    // Recursively search nested objects/arrays
-    if (Array.isArray(obj)) {
-      for (const item of obj) {
-        const res = extractOutput(item);
-        if (res) return res;
-      }
-    } else {
-      for (const key of Object.keys(obj)) {
-        const res = extractOutput(obj[key]);
-        if (res) return res;
-      }
-    }
-    return null;
-  }
-
-  useEffect(() => {
-    if (open && bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, open]);
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -87,7 +63,6 @@ export default function ChatWidget() {
       const data = await res.json();
       console.log("Webhook raw response:", data);
 
-      // Use helper to find output string anywhere in response
       const output = extractOutput(data);
 
       let botMsg: string;
@@ -148,61 +123,13 @@ export default function ChatWidget() {
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div
-            className="flex-1 flex flex-col px-3 py-2 overflow-y-auto max-h-[350px]"
-            style={{ minHeight: "160px" }}
-          >
-            <div className="flex flex-col gap-2">
-              {messages.length === 0 && (
-                <div className="text-gray-400 text-sm mt-2 text-center">
-                  Start chatting! Ask me anything about the gym.
-                </div>
-              )}
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    "px-3 py-2 rounded-lg text-sm whitespace-pre-line",
-                    msg.from === "user"
-                      ? "bg-blue-100 self-end text-gray-800"
-                      : "bg-gray-100 self-start text-gray-700"
-                  )}
-                >
-                  {msg.content}
-                </div>
-              ))}
-              <div ref={bottomRef} />
-            </div>
-          </div>
-          <form
-            className="flex items-center gap-2 border-t px-3 py-2"
-            onSubmit={handleSend}
-          >
-            <input
-              type="text"
-              className="flex-1 bg-transparent outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm"
-              placeholder="Type your message..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={loading}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) handleSend(e);
-              }}
-            />
-            <Button
-              type="submit"
-              disabled={loading || !input.trim()}
-              size="sm"
-              className="h-9 px-4"
-            >
-              {loading ? (
-                <Loader className="animate-spin w-5 h-5" />
-              ) : (
-                "Send"
-              )}
-            </Button>
-          </form>
+          <ChatMessages messages={messages} open={open} />
+          <ChatInputForm
+            input={input}
+            setInput={setInput}
+            handleSend={handleSend}
+            loading={loading}
+          />
           {error && (
             <div className="p-2 text-xs text-red-600 text-center">
               {error}
