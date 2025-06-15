@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Loader } from "lucide-react";
 import { Button } from "./ui/button";
@@ -32,6 +31,25 @@ export default function ChatWidget() {
 
   // Generate session ID on first mount
   const [sessionId] = useState(() => generateSessionId());
+
+  // Helper to reliably find first output field in arbitrary response object
+  function extractOutput(obj: any): string | null {
+    if (!obj || typeof obj !== "object") return null;
+    if (typeof obj.output === "string" && obj.output.trim()) return obj.output;
+    // Recursively search nested objects/arrays
+    if (Array.isArray(obj)) {
+      for (const item of obj) {
+        const res = extractOutput(item);
+        if (res) return res;
+      }
+    } else {
+      for (const key of Object.keys(obj)) {
+        const res = extractOutput(obj[key]);
+        if (res) return res;
+      }
+    }
+    return null;
+  }
 
   useEffect(() => {
     if (open && bottomRef.current) {
@@ -69,19 +87,14 @@ export default function ChatWidget() {
       const data = await res.json();
       console.log("Webhook raw response:", data);
 
-      // Always normalize data to an array
-      const arr = Array.isArray(data) ? data : [data];
-      const output = arr[0]?.response?.body?.output;
+      // Use helper to find output string anywhere in response
+      const output = extractOutput(data);
 
-      // Show output if present, otherwise display the full webhook raw data for debugging
       let botMsg: string;
       if (typeof output === "string" && output.trim()) {
-        botMsg = output;
+        botMsg = output.trim();
       } else {
-        // Show the whole data for easier debugging if output missing
-        botMsg =
-          "No 'output' field found. Full webhook data:\n" +
-          JSON.stringify(data, null, 2);
+        botMsg = "Sorry, no response received from the bot.";
       }
 
       setMessages((prev) => [
@@ -200,5 +213,3 @@ export default function ChatWidget() {
     </>
   );
 }
-
-// ... (end of file)
