@@ -21,27 +21,14 @@ const CATEGORIES = [
   { name: "Pending", color: "#6b7280" },
 ];
 
-// Utility: categorize members by status.
-function categorizeMember(member) {
-  // "Expired": membership_end_date is in the past (today or before) and payment_status is not 'paid'
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const endDate = member.membership_end_date
-    ? parseISO(member.membership_end_date)
-    : null;
-  const paymentStatus = (member.payment_status || "").toLowerCase();
-  // Suspended if set, else other rules (example: demo only)
-  if (paymentStatus === "suspended") return "Suspended";
-  if (
-    endDate &&
-    isValid(endDate) &&
-    differenceInCalendarDays(today, endDate) >= 0 &&
-    paymentStatus !== "paid"
-  ) {
-    return "Expired";
-  }
-  // Pending (using status "pending" or "awaiting" in payment_status)
-  if (paymentStatus === "pending" || paymentStatus === "awaiting") return "Pending";
+function categorizeMember(member: any) {
+  // Simple categorization based on status
+  const status = (member.status || "active").toLowerCase();
+  
+  if (status === "suspended") return "Suspended";
+  if (status === "expired") return "Expired";
+  if (status === "pending") return "Pending";
+  
   // Default: Active
   return "Active";
 }
@@ -49,10 +36,10 @@ function categorizeMember(member) {
 const MembershipChart = () => {
   // Query members from database
   const { data: members = [], isLoading, error } = useQuery({
-    queryKey: ["test_members"],
+    queryKey: ["members"],
     queryFn: async () => {
-      let { data, error } = await supabase
-        .from("test_members")
+      const { data, error } = await supabase
+        .from("members")
         .select("*");
       if (error) throw error;
       return data ?? [];

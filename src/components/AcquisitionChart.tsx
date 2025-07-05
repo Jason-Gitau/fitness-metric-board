@@ -27,8 +27,8 @@ function groupMembersByMonth(members: any[]) {
   }));
 
   for (const m of members) {
-    if (!m.inserted_at) continue;
-    const date = new Date(m.inserted_at);
+    if (!m.join_date) continue;
+    const date = new Date(m.join_date);
     if (date.getFullYear() === thisYear) {
       const month = date.getMonth(); // 0-indexed
       result[month].members += 1;
@@ -40,11 +40,11 @@ function groupMembersByMonth(members: any[]) {
 const AcquisitionChart = () => {
   // Fetch all test_members and their inserted_at (date of registration)
   const { data: members = [], isLoading, error } = useQuery({
-    queryKey: ["test_members", "acquisition"],
+    queryKey: ["members", "acquisition"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("test_members")
-        .select("inserted_at");
+        .from("members")
+        .select("join_date");
       if (error) throw error;
       return data ?? [];
     },

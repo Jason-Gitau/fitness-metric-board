@@ -1,29 +1,28 @@
-
 import { differenceInCalendarDays, parseISO, isValid } from "date-fns";
 
-export interface TestMember {
-  member_id: string;
-  full_name?: string | null;
-  membership_type?: string | null;
-  payment_status?: string | null;
-  membership_end_date?: string | null;
-  last_visit?: string | null;
+export interface Member {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string | null;
+  join_date: string;
+  status?: string | null;
+  Birthdate?: string | null;
 }
 
 export interface CategorizationResult {
-  active: TestMember[];
-  dueSoon: TestMember[];
-  overdue: TestMember[];
+  active: Member[];
+  dueSoon: Member[];
+  overdue: Member[];
   inactive: {
-    member_id: string;
-    full_name?: string | null;
+    id: number;
+    name: string;
     reason: string;
   }[];
 }
 
-export function categorizeMembers(members: TestMember[]) {
+export function categorizeMembers(members: Member[]) {
   const today = new Date();
-  // Standardize today's time to 00:00
   today.setHours(0, 0, 0, 0);
 
   const result: CategorizationResult = {
@@ -34,63 +33,40 @@ export function categorizeMembers(members: TestMember[]) {
   };
 
   members.forEach((member) => {
-    const endDate = member.membership_end_date ? parseISO(member.membership_end_date) : undefined;
-    const lastVisit = member.last_visit ? parseISO(member.last_visit) : undefined;
-    const now = today;
-
-    let inactiveReasons = [];
-
-    // Do NOT mark as inactive if member attended in last 14 days
-    if (lastVisit && isValid(lastVisit) && differenceInCalendarDays(now, lastVisit) <= 14) {
-      // Recent attendance - not inactive, continue processing as normal member
-    } else {
-      // Inactive rule 1: membership expired 30+ days ago
-      if (endDate && isValid(endDate) && differenceInCalendarDays(now, endDate) > 30) {
-        inactiveReasons.push("Membership expired more than 30 days ago.");
-      }
-
-      // Inactive rule 2: last visit > 14 days ago or never visited
-      if (!lastVisit) {
-        inactiveReasons.push("No check-in record in the last 14 days.");
-      } else if (isValid(lastVisit) && differenceInCalendarDays(now, lastVisit) > 14) {
-        inactiveReasons.push("Last check-in was over 14 days ago.");
-      }
-    }
-
-    if (inactiveReasons.length) {
+    // Since the members table doesn't have membership_end_date or last_visit,
+    // we'll use a simplified categorization based on status and join_date
+    
+    // If status is explicitly set to inactive or suspended
+    if (member.status?.toLowerCase() === 'inactive' || member.status?.toLowerCase() === 'suspended') {
       result.inactive.push({
-        member_id: member.member_id,
-        full_name: member.full_name,
-        reason: inactiveReasons.join(" "),
+        id: member.id,
+        name: member.name,
+        reason: `Status: ${member.status}`,
       });
       return;
     }
 
-    // Overdue Renewal: membership_end_date in the past (today or before) and payment_status NOT 'paid'
-    if (
-      endDate &&
-      isValid(endDate) &&
-      differenceInCalendarDays(now, endDate) >= 0 &&
-      member.payment_status?.toLowerCase() !== "paid"
-    ) {
-      result.overdue.push(member);
+    // Check if member joined more than 60 days ago and has inactive status
+    const joinDate = parseISO(member.join_date);
+    const daysSinceJoin = differenceInCalendarDays(today, joinDate);
+    
+    if (daysSinceJoin > 60 && (!member.status || member.status.toLowerCase() !== 'active')) {
+      result.inactive.push({
+        id: member.id,
+        name: member.name,
+        reason: "Long-term member with non-active status",
+      });
       return;
     }
 
-    // Due for Renewal: membership_end_date within next 7 days (today included) and payment_status NOT 'paid'
-    if (
-      endDate &&
-      isValid(endDate) &&
-      differenceInCalendarDays(endDate, now) >= 0 &&
-      differenceInCalendarDays(endDate, now) <= 7 &&
-      member.payment_status?.toLowerCase() !== "paid"
-    ) {
+    // For simplicity, categorize based on status or default to active
+    if (member.status?.toLowerCase() === 'pending') {
       result.dueSoon.push(member);
-      return;
+    } else if (member.status?.toLowerCase() === 'expired') {
+      result.overdue.push(member);
+    } else {
+      result.active.push(member);
     }
-
-    // Else, active
-    result.active.push(member);
   });
 
   return result;

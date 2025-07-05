@@ -9,95 +9,178 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      members: {
+      booking: {
         Row: {
-          "Full Name": string | null
-          inserted_at: string
-          "Last Check-in Date/Time": string | null
-          "Member's ID": string
-          "Membership End Date": string | null
-          "membership-type": string | null
-          "Payment Status ": string | null
-          phone: string | null
-          "Total Visits": number | null
-          updated_at: string
+          class_name: string
+          date: string
+          id: number
+          member_id: number
+          status: string | null
         }
         Insert: {
-          "Full Name"?: string | null
-          inserted_at?: string
-          "Last Check-in Date/Time"?: string | null
-          "Member's ID": string
-          "Membership End Date"?: string | null
-          "membership-type"?: string | null
-          "Payment Status "?: string | null
-          phone?: string | null
-          "Total Visits"?: number | null
-          updated_at?: string
+          class_name: string
+          date: string
+          id?: never
+          member_id: number
+          status?: string | null
         }
         Update: {
-          "Full Name"?: string | null
-          inserted_at?: string
-          "Last Check-in Date/Time"?: string | null
-          "Member's ID"?: string
-          "Membership End Date"?: string | null
-          "membership-type"?: string | null
-          "Payment Status "?: string | null
+          class_name?: string
+          date?: string
+          id?: never
+          member_id?: number
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      check_ins: {
+        Row: {
+          "check_in date": string | null
+          check_in_time: string | null
+          check_out_time: string | null
+          duration_minutes: number | null
+          facility_area: string | null
+          id: number
+          "last nudge": string | null
+          member_id: number
+          "total nudges": number | null
+        }
+        Insert: {
+          "check_in date"?: string | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          duration_minutes?: number | null
+          facility_area?: string | null
+          id?: never
+          "last nudge"?: string | null
+          member_id: number
+          "total nudges"?: number | null
+        }
+        Update: {
+          "check_in date"?: string | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          duration_minutes?: number | null
+          facility_area?: string | null
+          id?: never
+          "last nudge"?: string | null
+          member_id?: number
+          "total nudges"?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      members: {
+        Row: {
+          Birthdate: string | null
+          email: string
+          id: number
+          join_date: string
+          name: string
+          phone: string | null
+          status: string | null
+        }
+        Insert: {
+          Birthdate?: string | null
+          email: string
+          id?: never
+          join_date: string
+          name: string
           phone?: string | null
-          "Total Visits"?: number | null
-          updated_at?: string
+          status?: string | null
+        }
+        Update: {
+          Birthdate?: string | null
+          email?: string
+          id?: never
+          join_date?: string
+          name?: string
+          phone?: string | null
+          status?: string | null
         }
         Relationships: []
       }
-      test_members: {
+      messages: {
         Row: {
-          collect_amount_paid_conditional: number | null
-          full_name: string | null
-          inserted_at: string
-          last_visit: string | null
-          member_id: string
-          membership_end_date: string | null
-          membership_start_date: string | null
-          membership_type: string | null
-          payment_status: string | null
-          phone: string | null
-          referrer_id: string | null
-          total_visits: number | null
-          updated_at: string
-          whatsapp_consent: string | null
+          content: string
+          id: number
+          member_id: number
+          sent_at: string | null
+          type: string
         }
         Insert: {
-          collect_amount_paid_conditional?: number | null
-          full_name?: string | null
-          inserted_at?: string
-          last_visit?: string | null
-          member_id: string
-          membership_end_date?: string | null
-          membership_start_date?: string | null
-          membership_type?: string | null
-          payment_status?: string | null
-          phone?: string | null
-          referrer_id?: string | null
-          total_visits?: number | null
-          updated_at?: string
-          whatsapp_consent?: string | null
+          content: string
+          id?: never
+          member_id: number
+          sent_at?: string | null
+          type: string
         }
         Update: {
-          collect_amount_paid_conditional?: number | null
-          full_name?: string | null
-          inserted_at?: string
-          last_visit?: string | null
-          member_id?: string
-          membership_end_date?: string | null
-          membership_start_date?: string | null
-          membership_type?: string | null
-          payment_status?: string | null
-          phone?: string | null
-          referrer_id?: string | null
-          total_visits?: number | null
-          updated_at?: string
-          whatsapp_consent?: string | null
+          content?: string
+          id?: never
+          member_id?: number
+          sent_at?: string | null
+          type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "messages_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction: {
+        Row: {
+          amount: number
+          "ending date": string | null
+          id: number
+          member_id: number
+          "start date": string
+          status: string | null
+        }
+        Insert: {
+          amount: number
+          "ending date"?: string | null
+          id?: never
+          member_id: number
+          "start date": string
+          status?: string | null
+        }
+        Update: {
+          amount?: number
+          "ending date"?: string | null
+          id?: never
+          member_id?: number
+          "start date"?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

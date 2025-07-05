@@ -57,9 +57,9 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
     try {
       // 1. Fetch member details
       const { data: member, error } = await supabase
-        .from("test_members")
+        .from("members")
         .select("*")
-        .eq("member_id", memberId.trim())
+        .eq("id", parseInt(memberId.trim()))
         .maybeSingle();
 
       if (error) {
@@ -85,7 +85,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
       if (isMemberOverdue(member)) {
         toast({
           title: "Check-In Blocked",
-          description: `Subscription is overdue for member "${member.full_name ?? member.member_id}". Please renew subscription before checking in.`,
+          description: `Subscription is overdue for member "${member.name ?? member.id}". Please renew subscription before checking in.`,
           variant: "destructive",
         });
         setSubmitting(false);
@@ -108,7 +108,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
           title: "Check-In Successful",
           description:
             result?.message ||
-            `Member "${member.full_name ?? member.member_id}" has been checked in.`,
+            `Member "${member.name ?? member.id}" has been checked in.`,
         });
         setMemberId("");
         onOpenChange(false);

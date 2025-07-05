@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import MetricCard from '../components/MetricCard';
-import MembershipChart from '../components/MembershipChart';
-import AcquisitionChart from '../components/AcquisitionChart';
+import MemberGrowthChart from '../components/MemberGrowthChart';
+import RevenueChart from '../components/RevenueChart';
+import GymUsageAnalytics from '../components/GymUsageAnalytics';
 import UpcomingRenewals from '../components/UpcomingRenewals';
 import PaymentOverview from '../components/PaymentOverview';
 import { Users, UserCheck, DollarSign, Calendar } from 'lucide-react';
@@ -20,10 +21,10 @@ import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const { data: members, isLoading, error } = useQuery({
-    queryKey: ["test_members"],
+    queryKey: ["members"],
     queryFn: async () => {
       let { data, error } = await supabase
-        .from("test_members")
+        .from("members")
         .select("*");
       if (error) throw error;
       return data ?? [];
@@ -117,13 +118,18 @@ const Index = () => {
           </>
         )}
 
-        {/* Row 2: Detailed Member Insights */}
+        {/* Row 2: Business Intelligence Dashboard */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <MembershipChart />
-          <AcquisitionChart />
+          <MemberGrowthChart />
+          <RevenueChart />
         </div>
 
-        {/* Row 3: Operational & Financial Insights (now dynamic) */}
+        {/* Row 3: Gym Usage Analytics */}
+        <div className="mb-8">
+          <GymUsageAnalytics />
+        </div>
+
+        {/* Row 4: Operational Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
             {isLoading && (
@@ -137,7 +143,7 @@ const Index = () => {
               </div>
             )}
             {!isLoading && !error && categorized && (
-              <UpcomingRenewalsTable dueSoonMembers={categorized.dueSoon} />
+              <UpcomingRenewalsTable dueSoonMembers={categorized.dueSoon.map(m => ({ member_id: m.id.toString(), full_name: m.name, membership_end_date: null }))} />
             )}
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
@@ -152,7 +158,7 @@ const Index = () => {
               </div>
             )}
             {!isLoading && !error && categorized && (
-              <InactiveMembersTable inactiveMembers={categorized.inactive} />
+              <InactiveMembersTable inactiveMembers={categorized.inactive.map(m => ({ member_id: m.id.toString(), full_name: m.name, reason: m.reason }))} />
             )}
           </div>
         </div>
