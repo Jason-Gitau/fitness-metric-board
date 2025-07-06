@@ -1,111 +1,88 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, User, Mail, Phone, Calendar, Users, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
 
-// Membership and Payment Status options
-const membershipTypes = ["Monthly", "Yearly", "Weekly", "Daily", "Quarterly"];
-const paymentStatuses = ["Paid", "Pending", "Not Paid", "Overdue"];
+const statusOptions = ["active", "inactive", "pending", "expired"];
 
 interface RegisterMemberFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const EXTERNAL_WEBHOOK_URL = "https://naturally-tolerant-leech.ngrok-free.app/webhook-test/ba3b058f-268f-4e28-8000-702c42e4f4d8";
+const WEBHOOK_URL = "https://dolphin-precise-quetzal.ngrok-free.app/webhook-test/4820b04b-c696-4501-98b1-04a8e499b620";
 
 const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenChange }) => {
   const [form, setForm] = useState({
+    name: "",
+    email: "",
     phone: "",
-    fullName: "",
-    membershipType: "",
-    membershipStart: undefined as Date | undefined,
-    paymentStatus: "",
-    amountPaid: "",
-    whatsappConsent: "",
-    referrerId: ""
+    join_date: undefined as Date | undefined,
+    status: "active",
+    Birthdate: undefined as Date | undefined
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const [user, setUser] = useState<any>(null);
-
-  // Use Supabase's user session to control registration visibility
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    getUser();
-    // Optional: listen to auth events if needed
-  }, []);
-
-  // Show amount paid only if "Paid" is selected
-  const showAmountPaid = form.paymentStatus === "Paid";
-
-  const sanitizeInput = (value: string) => value.trim().replace(/[<>]/g, "");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: sanitizeInput(e.target.value) });
+    setForm({ ...form, [e.target.name]: e.target.value.trim() });
   };
 
-  const handleDateChange = (date: Date | undefined) => {
-    setForm({ ...form, membershipStart: date });
+  const handleDateChange = (field: string) => (date: Date | undefined) => {
+    setForm({ ...form, [field]: date });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Input validation and sanitization
-    if (!form.phone || !form.fullName || !form.membershipType || !form.membershipStart || !form.paymentStatus || !form.whatsappConsent) {
+    if (!form.name || !form.email || !form.phone || !form.join_date) {
       toast({ title: "Error", description: "Please fill all required fields.", variant: "destructive" });
-      return;
-    }
-    if (showAmountPaid && !form.amountPaid) {
-      toast({ title: "Error", description: "Please enter the amount paid for Paid status.", variant: "destructive" });
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // Webhook payload: all fields sanitized above
-      const payload = {
-        phone: form.phone,
-        fullName: form.fullName,
-        membershipType: form.membershipType,
-        membershipStart: form.membershipStart?.toISOString().split("T")[0],
-        paymentStatus: form.paymentStatus,
-        amountPaid: showAmountPaid ? form.amountPaid : undefined,
-        whatsappConsent: form.whatsappConsent,
-        referrerId: form.referrerId
-      };
+      // Check authentication
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: "Error", description: "You must be logged in to register a member.", variant: "destructive" });
+        return;
+      }
 
-      // For the webhook, strongly recommend restricting this endpoint and validating signatures
-      const res = await fetch(EXTERNAL_WEBHOOK_URL, {
+      const payload = [{
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        join_date: form.join_date.toISOString().split("T")[0],
+        status: form.status,
+        Birthdate: form.Birthdate ? form.Birthdate.toISOString().split("T")[0] : ""
+      }];
+
+      const response = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error("Submission failed");
+      if (!response.ok) throw new Error("Submission failed");
 
       toast({ title: "Success", description: "Member registered successfully!" });
       setForm({
+        name: "",
+        email: "",
         phone: "",
-        fullName: "",
-        membershipType: "",
-        membershipStart: undefined,
-        paymentStatus: "",
-        amountPaid: "",
-        whatsappConsent: "",
-        referrerId: ""
+        join_date: undefined,
+        status: "active",
+        Birthdate: undefined
       });
       onOpenChange(false);
     } catch (err) {
@@ -115,142 +92,204 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
     }
   };
 
-  // Only show the form for authenticated users
-  if (!user) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Register a New Member</DrawerTitle>
-          </DrawerHeader>
-          <div className="p-4 text-red-600">
-            You must be logged in to register a new member.
-          </div>
-          <DrawerClose asChild>
-            <Button type="button" variant="ghost">
-              Close
-            </Button>
-          </DrawerClose>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>Register a New Member</DrawerTitle>
-        </DrawerHeader>
-        <form className="px-4 pb-4 space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone Number *</label>
-            <Input name="phone" placeholder="07XXXXXXXX" value={form.phone} onChange={handleChange} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Full Name *</label>
-            <Input name="fullName" placeholder="Member's full name" value={form.fullName} onChange={handleChange} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Membership Type *</label>
-            <select
-              name="membershipType"
-              className="w-full border rounded-md h-10 px-2 bg-white"
-              value={form.membershipType}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select...</option>
-              {membershipTypes.map((type) => (
-                <option key={type}>{type}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Membership Start Date *</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant={"outline"}
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !form.membershipStart && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-                  {form.membershipStart ? format(form.membershipStart, "PPP") : <span>Select date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="p-0 w-auto">
-                <Calendar
-                  mode="single"
-                  selected={form.membershipStart}
-                  onSelect={handleDateChange}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Payment Status *</label>
-            <select
-              name="paymentStatus"
-              className="w-full border rounded-md h-10 px-2 bg-white"
-              value={form.paymentStatus}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select...</option>
-              {paymentStatuses.map((status) => (
-                <option key={status}>{status}</option>
-              ))}
-            </select>
-          </div>
-          {showAmountPaid && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Amount Paid *</label>
-              <Input
-                name="amountPaid"
-                placeholder="Enter amount"
-                type="number"
-                value={form.amountPaid}
-                onChange={handleChange}
-                required={showAmountPaid}
-                min={0}
-              />
+      <DrawerContent className="max-h-[90vh]">
+        <DrawerHeader className="pb-2">
+          <div className="flex items-center justify-center">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <DrawerTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Register New Member
+                </DrawerTitle>
+                <p className="text-sm text-muted-foreground mt-1">Add a new member to your gym community</p>
+              </div>
             </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium mb-1">WhatsApp Consent *</label>
-            <select
-              name="whatsappConsent"
-              className="w-full border rounded-md h-10 px-2 bg-white"
-              value={form.whatsappConsent}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select...</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Referrer ID (Optional)</label>
-            <Input name="referrerId" placeholder="Referrer Name or ID" value={form.referrerId} onChange={handleChange} />
-          </div>
-          <div className="flex justify-end gap-2">
-            <DrawerClose asChild>
-              <Button type="button" variant="ghost">
-                Cancel
-              </Button>
-            </DrawerClose>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Registering..." : "Register"}
-            </Button>
-          </div>
-        </form>
+        </DrawerHeader>
+        
+        <div className="px-6 pb-6 overflow-y-auto">
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-muted/20">
+            <CardContent className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Personal Information Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <User className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-semibold text-foreground">Personal Information</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                        <User className="w-4 h-4 text-primary" />
+                        <span>Full Name *</span>
+                      </label>
+                      <Input 
+                        name="name" 
+                        placeholder="Enter member's full name" 
+                        value={form.name} 
+                        onChange={handleChange} 
+                        required 
+                        className="border-2 focus:border-primary transition-colors"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                        <Mail className="w-4 h-4 text-primary" />
+                        <span>Email Address *</span>
+                      </label>
+                      <Input 
+                        name="email" 
+                        type="email"
+                        placeholder="member@example.com" 
+                        value={form.email} 
+                        onChange={handleChange} 
+                        required 
+                        className="border-2 focus:border-primary transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                        <Phone className="w-4 h-4 text-primary" />
+                        <span>Phone Number *</span>
+                      </label>
+                      <Input 
+                        name="phone" 
+                        placeholder="07XXXXXXXX" 
+                        value={form.phone} 
+                        onChange={handleChange} 
+                        required 
+                        className="border-2 focus:border-primary transition-colors"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                        <Gift className="w-4 h-4 text-primary" />
+                        <span>Date of Birth</span>
+                      </label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal border-2 hover:border-primary transition-colors",
+                              !form.Birthdate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {form.Birthdate ? format(form.Birthdate, "PPP") : <span>Select date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="p-0 w-auto">
+                          <CalendarComponent
+                            mode="single"
+                            selected={form.Birthdate}
+                            onSelect={handleDateChange("Birthdate")}
+                            initialFocus
+                            className="p-3"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Membership Information Section */}
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-semibold text-foreground">Membership Details</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                        <CalendarIcon className="w-4 h-4 text-primary" />
+                        <span>Join Date *</span>
+                      </label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal border-2 hover:border-primary transition-colors",
+                              !form.join_date && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {form.join_date ? format(form.join_date, "PPP") : <span>Select join date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="p-0 w-auto">
+                          <CalendarComponent
+                            mode="single"
+                            selected={form.join_date}
+                            onSelect={handleDateChange("join_date")}
+                            initialFocus
+                            className="p-3"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                        <Users className="w-4 h-4 text-primary" />
+                        <span>Member Status</span>
+                      </label>
+                      <select
+                        name="status"
+                        className="w-full border-2 rounded-md h-10 px-3 bg-background border-input focus:border-primary transition-colors"
+                        value={form.status}
+                        onChange={handleChange}
+                      >
+                        {statusOptions.map((status) => (
+                          <option key={status} value={status}>
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-6 border-t border-border">
+                  <DrawerClose asChild>
+                    <Button type="button" variant="outline" className="px-6">
+                      Cancel
+                    </Button>
+                  </DrawerClose>
+                  <Button 
+                    type="submit" 
+                    disabled={submitting}
+                    className="px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    {submitting ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Registering...</span>
+                      </div>
+                    ) : (
+                      "Register Member"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </DrawerContent>
     </Drawer>
   );

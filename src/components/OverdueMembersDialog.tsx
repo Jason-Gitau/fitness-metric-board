@@ -9,14 +9,14 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import type { TestMember } from "@/utils/memberCategorization";
+import type { Member } from "@/utils/memberCategorization";
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 
 interface OverdueMembersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  members: TestMember[];
+  members: Member[];
 }
 
 const OverdueMembersDialog: React.FC<OverdueMembersDialogProps> = ({ open, onOpenChange, members }) => {
@@ -48,17 +48,17 @@ const OverdueMembersDialog: React.FC<OverdueMembersDialogProps> = ({ open, onOpe
               </TableHeader>
               <TableBody>
                 {members.map((m) => (
-                  <TableRow key={m.member_id}>
-                    <TableCell className="font-medium">{m.full_name ?? <span className="italic text-gray-400">—</span>}</TableCell>
-                    <TableCell>{m.membership_type ?? <span className="italic text-gray-400">—</span>}</TableCell>
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell>{m.status ?? <span className="italic text-gray-400">—</span>}</TableCell>
                     <TableCell>
-                      {m.membership_end_date ? format(new Date(m.membership_end_date), "MMM d, yyyy") : <span className="italic text-gray-400">—</span>}
+                      {m.join_date ? format(new Date(m.join_date), "MMM d, yyyy") : <span className="italic text-gray-400">—</span>}
                     </TableCell>
                     <TableCell>
-                      {m.last_visit ? format(new Date(m.last_visit), "MMM d, yyyy") : <span className="italic text-gray-400">Never</span>}
+                      <span className="italic text-gray-400">—</span>
                     </TableCell>
                     <TableCell>
-                      {m.payment_status ?? <span className="italic text-gray-400">—</span>}
+                      <span className="italic text-gray-400">—</span>
                     </TableCell>
                   </TableRow>
                 ))}
