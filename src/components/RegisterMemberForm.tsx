@@ -33,7 +33,8 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
   const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value.trim() });
+    const value = e.target.name === 'name' ? e.target.value : e.target.value.trim();
+    setForm({ ...form, [e.target.name]: value });
   };
 
   const handleDateChange = (field: string) => (date: Date | undefined) => {
@@ -176,30 +177,47 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
                         <Gift className="w-4 h-4 text-primary" />
                         <span>Date of Birth</span>
                       </label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal border-2 hover:border-primary transition-colors",
-                              !form.Birthdate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {form.Birthdate ? format(form.Birthdate, "PPP") : <span>Select date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" className="p-0 w-auto">
-                          <CalendarComponent
-                            mode="single"
-                            selected={form.Birthdate}
-                            onSelect={handleDateChange("Birthdate")}
-                            initialFocus
-                            className="p-3"
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="date"
+                          name="birthdateInput"
+                          placeholder="YYYY-MM-DD"
+                          value={form.Birthdate ? format(form.Birthdate, "yyyy-MM-dd") : ""}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              const date = new Date(e.target.value);
+                              setForm({ ...form, Birthdate: date });
+                            } else {
+                              setForm({ ...form, Birthdate: undefined });
+                            }
+                          }}
+                          className="flex-1 border-2 focus:border-primary transition-colors"
+                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="border-2 hover:border-primary transition-colors"
+                            >
+                              <CalendarIcon className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="p-0 w-auto">
+                            <CalendarComponent
+                              mode="single"
+                              selected={form.Birthdate}
+                              onSelect={handleDateChange("Birthdate")}
+                              initialFocus
+                              className="p-3 pointer-events-auto"
+                              captionLayout="dropdown-buttons"
+                              fromYear={1924}
+                              toYear={new Date().getFullYear()}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
                   </div>
                 </div>
