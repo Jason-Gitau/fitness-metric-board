@@ -22,6 +22,12 @@ interface Message {
   content: string;
 }
 
+const SUGGESTED_PROMPTS = [
+  "Who hasn't paid?",
+  "Send reminders to inactive members",
+  "Show member trends for last 30 days"
+];
+
 const WEBHOOK_URL =
   "https://naturally-tolerant-leech.ngrok-free.app/webhook-test/d14345ad-fdb3-494f-ac97-9b84245b60b8";
 
@@ -95,6 +101,10 @@ export default function ChatWidget() {
     }
   };
 
+  const handleSuggestionClick = (suggestion: string) => {
+    setInput(suggestion);
+  };
+
   return (
     <>
       {/* Floating Button */}
@@ -123,6 +133,23 @@ export default function ChatWidget() {
               <X className="w-5 h-5" />
             </button>
           </div>
+          {/* Prompt Suggestions - only show when no messages */}
+          {messages.length === 0 && (
+            <div className="p-3 border-b border-gray-100">
+              <p className="text-xs text-gray-600 mb-2">Suggested commands:</p>
+              <div className="space-y-1">
+                {SUGGESTED_PROMPTS.map((prompt, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(prompt)}
+                    className="w-full text-left text-xs px-2 py-1.5 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 rounded border border-gray-200 hover:border-blue-200 transition-colors"
+                  >
+                    "{prompt}"
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <ChatMessages messages={messages} open={open} />
           <ChatInputForm
             input={input}
