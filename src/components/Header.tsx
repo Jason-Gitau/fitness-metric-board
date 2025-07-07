@@ -1,19 +1,28 @@
 
 import React, { useState } from 'react';
-import { Search, Bell, Menu, LogOut, LogIn } from 'lucide-react';
+import { Bell, Menu, LogOut, LogIn } from 'lucide-react';
 import RegisterMemberForm from './RegisterMemberForm';
 import MemberCheckInDialog from './MemberCheckInDialog';
 import PaymentRecordDialog from './PaymentRecordDialog';
+import MemberSearchDropdown from './MemberSearchDropdown';
+import MemberEditDialog from './MemberEditDialog';
+import MemberDeleteDialog from './MemberDeleteDialog';
 import { Button } from "@/components/ui/button";
 import { useAuthState } from "@/hooks/useAuthState";
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { Tables } from "@/integrations/supabase/types";
+
+type Member = Tables<'members'>;
 
 const Header = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const { user, loading } = useAuthState();
   const navigate = useNavigate();
 
@@ -43,6 +52,24 @@ const Header = () => {
     navigate("/auth");
   };
 
+  const handleMemberSelect = (member: Member) => {
+    setSelectedMember(member);
+    setEditDialogOpen(true);
+  };
+
+  const handleMemberDelete = (member: Member) => {
+    setSelectedMember(member);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleMemberUpdated = () => {
+    // Trigger refresh or refetch of member data if needed
+  };
+
+  const handleMemberDeleted = () => {
+    // Trigger refresh or refetch of member data if needed
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 relative">
       <div className="flex items-center justify-between">
@@ -54,16 +81,10 @@ const Header = () => {
           <h1 className="text-xl font-semibold text-gray-900">Gym CRM Dashboard</h1>
         </div>
         {/* Search Bar */}
-        <div className="flex-1 max-w-lg mx-8">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <input
-              type="text"
-              placeholder="Search members..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            />
-          </div>
-        </div>
+        <MemberSearchDropdown 
+          onMemberSelect={handleMemberSelect}
+          onMemberDelete={handleMemberDelete}
+        />
         {/* Actions/Notifications + Hamburger */}
         <div className="flex items-center space-x-4">
           <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
@@ -137,6 +158,20 @@ const Header = () => {
       <MemberCheckInDialog open={checkInOpen} onOpenChange={setCheckInOpen} />
       {/* Payment Record Dialog */}
       <PaymentRecordDialog open={paymentOpen} onOpenChange={setPaymentOpen} />
+      {/* Member Edit Dialog */}
+      <MemberEditDialog 
+        member={selectedMember}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onMemberUpdated={handleMemberUpdated}
+      />
+      {/* Member Delete Dialog */}
+      <MemberDeleteDialog 
+        member={selectedMember}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onMemberDeleted={handleMemberDeleted}
+      />
     </header>
   );
 };
