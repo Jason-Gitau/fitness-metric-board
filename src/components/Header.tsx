@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Search, Bell, Menu, LogOut, LogIn } from 'lucide-react';
 import RegisterMemberForm from './RegisterMemberForm';
 import MemberCheckInDialog from './MemberCheckInDialog';
+import PaymentRecordDialog from './PaymentRecordDialog';
 import { Button } from "@/components/ui/button";
 import { useAuthState } from "@/hooks/useAuthState";
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +13,7 @@ const Header = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [checkInOpen, setCheckInOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const { user, loading } = useAuthState();
   const navigate = useNavigate();
 
@@ -24,6 +26,11 @@ const Header = () => {
 
   const handleCheckInClick = () => {
     setCheckInOpen(true);
+    setMenuOpen(false);
+  };
+
+  const handlePaymentClick = () => {
+    setPaymentOpen(true);
     setMenuOpen(false);
   };
 
@@ -113,6 +120,12 @@ const Header = () => {
                 >
                   Member check in
                 </button>
+                <button
+                  onClick={handlePaymentClick}
+                  className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 border-t"
+                >
+                  Record payment
+                </button>
               </div>
             )}
           </div>
@@ -122,6 +135,8 @@ const Header = () => {
       <RegisterMemberForm open={drawerOpen} onOpenChange={setDrawerOpen} />
       {/* Member Check-In Dialog */}
       <MemberCheckInDialog open={checkInOpen} onOpenChange={setCheckInOpen} />
+      {/* Payment Record Dialog */}
+      <PaymentRecordDialog open={paymentOpen} onOpenChange={setPaymentOpen} />
     </header>
   );
 };
