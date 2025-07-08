@@ -17,12 +17,16 @@ const SUGGESTION_CARDS = [
   { icon: <Zap className="w-5 h-5" />, text: "Automate gym operations efficiently", color: "from-violet-500/20 to-pink-500/20 border-violet-500/30" }
 ];
 
+const WEBHOOK_URL = "https://dolphin-precise-quetzal.ngrok-free.app/webhook-test/b81fd764-f0b3-481c-a3cc-d2e881cdf11c";
+
 const AuthPage: React.FC = () => {
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
   const { session, user, loading } = useAuthState();
   const navigate = useNavigate();
 
@@ -55,6 +59,44 @@ const AuthPage: React.FC = () => {
       toast({ title: "Auth failed", description: error.message || "Unknown error", variant: "destructive" });
     }
     setSubmitting(false);
+  };
+
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || sendingMessage) return;
+
+    setSendingMessage(true);
+    try {
+      const response = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: chatInput.trim(),
+          timestamp: new Date().toISOString(),
+          source: "landing_page"
+        }),
+      });
+
+      if (response.ok) {
+        toast({ title: "Message sent!", description: "We'll get back to you shortly." });
+        setChatInput("");
+      } else {
+        throw new Error("Failed to send message");
+      }
+    } catch (error) {
+      toast({ 
+        title: "Failed to send message", 
+        description: "Please try again later.", 
+        variant: "destructive" 
+      });
+    }
+    setSendingMessage(false);
+  };
+
+  const handleSuggestionClick = (suggestionText: string) => {
+    setChatInput(suggestionText);
   };
 
   if (showAuthForm) {
@@ -147,26 +189,39 @@ const AuthPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Mock Search Bar */}
-        <div className="w-full max-w-2xl mb-12">
+        {/* Functional Chat Input */}
+        <form onSubmit={handleChatSubmit} className="w-full max-w-2xl mb-12">
           <div className="relative">
             <div className="bg-slate-800/60 backdrop-blur-lg rounded-2xl border border-slate-700/50 p-4 shadow-2xl">
               <div className="flex items-center space-x-3">
-                <Zap className="w-6 h-6 text-blue-400" />
-                <div className="flex-1 text-left text-slate-400 text-lg">
-                  Ask anything about your gym...
-                </div>
-                <ArrowRight className="w-6 h-6 text-slate-500" />
+                <Zap className="w-6 h-6 text-blue-400 flex-shrink-0" />
+                <Input
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Ask anything about your gym..."
+                  disabled={sendingMessage}
+                  className="flex-1 bg-transparent border-none text-white placeholder:text-slate-400 text-lg focus:ring-0 focus:outline-none p-0"
+                />
+                <Button
+                  type="submit"
+                  disabled={!chatInput.trim() || sendingMessage}
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-500 hover:text-blue-400 hover:bg-slate-700/50 transition-colors flex-shrink-0"
+                >
+                  <ArrowRight className="w-6 h-6" />
+                </Button>
               </div>
             </div>
           </div>
-        </div>
+        </form>
 
         {/* Suggestion Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto mb-12">
           {SUGGESTION_CARDS.map((card, index) => (
             <div
               key={index}
+              onClick={() => handleSuggestionClick(card.text)}
               className={`group cursor-pointer bg-gradient-to-r ${card.color} backdrop-blur-lg rounded-xl border p-6 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl`}
             >
               <div className="flex items-center space-x-3">
