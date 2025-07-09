@@ -56,27 +56,53 @@ function calculateStreakScore(
 }
 
 const StreakLeaderboard = () => {
-  // Fetch necessary member fields ONLY
+  // Fetch members with their total check-in counts
   const { data: members = [], isLoading, error } = useQuery({
-    queryKey: ["members", "streak_leaderboard"],
+    queryKey: ["members", "checkin_leaderboard"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("members")
-        .select("id, name, join_date");
+        .select(`
+          id,
+          name,
+          check_ins!inner("checkin count")
+        `);
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  // Calculate streaks, filter, sort, top 5
+  // Calculate leaderboard based on check-in counts
   const top5: LeaderboardEntry[] = React.useMemo(() => {
     if (!members.length) return [];
-    return members
-      .map((m) => ({
-        member_id: m.id.toString(),
-        full_name: m.name,
-        total_visits: Math.floor(Math.random() * 50) + 1, // Mock data since we don't have visits
-        streak_score: Math.floor(Math.random() * 100) + 1, // Mock streak score
+    
+    // Aggregate check-in counts for each member
+    const memberStats = members.reduce((acc: Record<string, { name: string, totalCheckins: number }>, member: any) => {
+      const memberId = member.id.toString();
+      const memberName = member.name;
+      
+      if (!acc[memberId]) {
+        acc[memberId] = { name: memberName, totalCheckins: 0 };
+      }
+      
+      // Sum up all checkin counts for this member
+      if (member.check_ins && Array.isArray(member.check_ins)) {
+        member.check_ins.forEach((checkin: any) => {
+          const checkinCount = checkin["checkin count"] || 0;
+          acc[memberId].totalCheckins += checkinCount;
+        });
+      }
+      
+      return acc;
+    }, {});
+    
+    // Convert to leaderboard entries and sort by check-in count
+    return Object.entries(memberStats)
+      .map(([memberId, stats]) => ({
+        member_id: memberId,
+        full_name: stats.name,
+        total_visits: stats.totalCheckins,
+        streak_score: stats.totalCheckins, // Use checkin count as streak score
       }))
       .sort((a, b) => b.streak_score - a.streak_score)
       .slice(0, 5);

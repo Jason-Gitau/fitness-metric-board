@@ -161,6 +161,7 @@ export type Database = {
           "ending date": string | null
           id: number
           member_id: number
+          period: string | null
           "start date": string
           status: string | null
         }
@@ -169,6 +170,7 @@ export type Database = {
           "ending date"?: string | null
           id?: never
           member_id: number
+          period?: string | null
           "start date": string
           status?: string | null
         }
@@ -177,6 +179,7 @@ export type Database = {
           "ending date"?: string | null
           id?: never
           member_id?: number
+          period?: string | null
           "start date"?: string
           status?: string | null
         }
