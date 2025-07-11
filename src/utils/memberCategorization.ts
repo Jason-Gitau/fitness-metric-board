@@ -30,24 +30,46 @@ export interface CategorizationResult {
 }
 
 export async function fetchMembersWithTransactions(): Promise<MemberWithTransaction[]> {
+  // Read directly from transaction table to get accurate renewal data
   const { data, error } = await supabase
-    .from("members")
+    .from("transaction")
     .select(`
-      id,
-      name,
-      email,
-      phone,
-      join_date,
       status,
-      Birthdate,
-      transaction(
+      "ending date",
+      members!inner(
+        id,
+        name,
+        email,
+        phone,
+        join_date,
         status,
-        "ending date"
+        Birthdate
       )
     `);
 
   if (error) throw error;
-  return data || [];
+  
+  // Transform the data to group transactions by member
+  const memberMap = new Map<number, MemberWithTransaction>();
+  
+  data?.forEach((txn: any) => {
+    const member = txn.members;
+    const memberId = member.id;
+    
+    if (!memberMap.has(memberId)) {
+      memberMap.set(memberId, {
+        ...member,
+        transaction: []
+      });
+    }
+    
+    memberMap.get(memberId)!.transaction!.push({
+      status: txn.status,
+      "ending date": txn["ending date"]
+    });
+  });
+  
+  return Array.from(memberMap.values());
 }
 
 export function categorizeMembers(members: MemberWithTransaction[]) {
