@@ -95,39 +95,6 @@ export function categorizeMembers(members: MemberWithTransaction[]) {
       return;
     }
 
-    // Check transaction data for overdue and upcoming renewals
-    if (member.transaction && Array.isArray(member.transaction)) {
-      let hasOverdue = false;
-      let hasUpcoming = false;
-
-      member.transaction.forEach((txn: any) => {
-        // Check for overdue (incomplete status)
-        if (txn.status?.toLowerCase() === 'incomplete') {
-          hasOverdue = true;
-        }
-
-        // Check for upcoming renewals (ending date within 7 days but not passed)
-        if (txn["ending date"]) {
-          const endingDate = parseISO(txn["ending date"]);
-          if (isValid(endingDate)) {
-            if (isBefore(today, endingDate) && isBefore(endingDate, upcomingThreshold)) {
-              hasUpcoming = true;
-            }
-          }
-        }
-      });
-
-      if (hasOverdue) {
-        result.overdue.push(member);
-        return;
-      }
-
-      if (hasUpcoming) {
-        result.dueSoon.push(member);
-        return;
-      }
-    }
-
     // Check if member joined more than 60 days ago and has inactive status
     const joinDate = parseISO(member.join_date);
     const daysSinceJoin = differenceInCalendarDays(today, joinDate);
@@ -141,8 +108,28 @@ export function categorizeMembers(members: MemberWithTransaction[]) {
       return;
     }
 
-    // Default to active
+    // Add to active (regardless of payment status)
     result.active.push(member);
+
+    // Check transaction data for overdue and upcoming renewals (separate from active status)
+    if (member.transaction && Array.isArray(member.transaction)) {
+      member.transaction.forEach((txn: any) => {
+        // Check for overdue (incomplete status)
+        if (txn.status?.toLowerCase() === 'incomplete') {
+          result.overdue.push(member);
+        }
+
+        // Check for upcoming renewals (ending date within 7 days but not passed)
+        if (txn["ending date"]) {
+          const endingDate = parseISO(txn["ending date"]);
+          if (isValid(endingDate)) {
+            if (isBefore(today, endingDate) && isBefore(endingDate, upcomingThreshold)) {
+              result.dueSoon.push(member);
+            }
+          }
+        }
+      });
+    }
   });
 
   return result;
