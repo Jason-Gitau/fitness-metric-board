@@ -9,7 +9,7 @@ import PaymentOverview from '../components/PaymentOverview';
 import { Users, UserCheck, DollarSign, Calendar } from 'lucide-react';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { categorizeMembers } from "@/utils/memberCategorization";
+import { categorizeMembers, fetchMembersWithTransactions } from "@/utils/memberCategorization";
 import UpcomingRenewalsTable from "@/components/UpcomingRenewalsTable";
 import InactiveMembersTable from "@/components/InactiveMembersTable";
 import ActiveMembersDialog from "@/components/ActiveMembersDialog";
@@ -21,14 +21,8 @@ import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const { data: members, isLoading, error } = useQuery({
-    queryKey: ["members"],
-    queryFn: async () => {
-      let { data, error } = await supabase
-        .from("members")
-        .select("*");
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryKey: ["members_with_transactions"],
+    queryFn: fetchMembersWithTransactions,
   });
 
   const categorized = members ? categorizeMembers(members) : null;

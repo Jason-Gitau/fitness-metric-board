@@ -1,4 +1,5 @@
-import { differenceInCalendarDays, parseISO, isValid } from "date-fns";
+import { differenceInCalendarDays, parseISO, isValid, isBefore, addDays } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Member {
   id: number;
@@ -8,6 +9,13 @@ export interface Member {
   join_date: string;
   status?: string | null;
   Birthdate?: string | null;
+}
+
+export interface MemberWithTransaction extends Member {
+  transaction?: {
+    status: string | null;
+    "ending date": string | null;
+  }[];
 }
 
 export interface CategorizationResult {
@@ -21,9 +29,31 @@ export interface CategorizationResult {
   }[];
 }
 
-export function categorizeMembers(members: Member[]) {
+export async function fetchMembersWithTransactions(): Promise<MemberWithTransaction[]> {
+  const { data, error } = await supabase
+    .from("members")
+    .select(`
+      id,
+      name,
+      email,
+      phone,
+      join_date,
+      status,
+      Birthdate,
+      transaction(
+        status,
+        "ending date"
+      )
+    `);
+
+  if (error) throw error;
+  return data || [];
+}
+
+export function categorizeMembers(members: MemberWithTransaction[]) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const upcomingThreshold = addDays(today, 7); // 7 days from now
 
   const result: CategorizationResult = {
     active: [],
@@ -33,9 +63,6 @@ export function categorizeMembers(members: Member[]) {
   };
 
   members.forEach((member) => {
-    // Since the members table doesn't have membership_end_date or last_visit,
-    // we'll use a simplified categorization based on status and join_date
-    
     // If status is explicitly set to inactive or suspended
     if (member.status?.toLowerCase() === 'inactive' || member.status?.toLowerCase() === 'suspended') {
       result.inactive.push({
@@ -44,6 +71,39 @@ export function categorizeMembers(members: Member[]) {
         reason: `Status: ${member.status}`,
       });
       return;
+    }
+
+    // Check transaction data for overdue and upcoming renewals
+    if (member.transaction && Array.isArray(member.transaction)) {
+      let hasOverdue = false;
+      let hasUpcoming = false;
+
+      member.transaction.forEach((txn: any) => {
+        // Check for overdue (incomplete status)
+        if (txn.status?.toLowerCase() === 'incomplete') {
+          hasOverdue = true;
+        }
+
+        // Check for upcoming renewals (ending date within 7 days but not passed)
+        if (txn["ending date"]) {
+          const endingDate = parseISO(txn["ending date"]);
+          if (isValid(endingDate)) {
+            if (isBefore(today, endingDate) && isBefore(endingDate, upcomingThreshold)) {
+              hasUpcoming = true;
+            }
+          }
+        }
+      });
+
+      if (hasOverdue) {
+        result.overdue.push(member);
+        return;
+      }
+
+      if (hasUpcoming) {
+        result.dueSoon.push(member);
+        return;
+      }
     }
 
     // Check if member joined more than 60 days ago and has inactive status
@@ -59,14 +119,8 @@ export function categorizeMembers(members: Member[]) {
       return;
     }
 
-    // For simplicity, categorize based on status or default to active
-    if (member.status?.toLowerCase() === 'pending') {
-      result.dueSoon.push(member);
-    } else if (member.status?.toLowerCase() === 'expired') {
-      result.overdue.push(member);
-    } else {
-      result.active.push(member);
-    }
+    // Default to active
+    result.active.push(member);
   });
 
   return result;
