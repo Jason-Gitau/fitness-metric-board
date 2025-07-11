@@ -10,7 +10,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { UserCheck, Phone, User, Sparkles, CheckCircle } from "lucide-react";
+import { UserCheck, Phone, User, Sparkles, CheckCircle, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MemberCheckInDialogProps {
   open: boolean;
@@ -50,45 +51,142 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
     setCheckInStep("processing");
 
     try {
-      // Send data to webhook for verification
-      const res = await fetch(
-        "https://PLACEHOLDER_WEBHOOK_URL/member-checkin-verification",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: memberData.name.trim(),
-            phone: memberData.phone.trim(),
-            timestamp: new Date().toISOString()
-          }),
-        }
-      );
-      
-      const result = await res.json().catch(() => ({}));
-      
-      if (res.ok) {
-        setCheckInStep("success");
+      // First, find the member by name and phone
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('id, name, phone, status')
+        .eq('name', memberData.name.trim())
+        .eq('phone', memberData.phone.trim())
+        .single();
+
+      if (memberError || !member) {
         toast({
-          title: "Check-In Successful! 🎉",
-          description: result?.message || `Welcome ${memberData.name}! You're all checked in.`,
-        });
-        
-        // Auto close after success animation
-        setTimeout(() => {
-          handleDialogClose();
-        }, 2500);
-      } else {
-        toast({
-          title: "Verification Failed",
-          description: result?.message || "Unable to verify member details. Please check your information.",
+          title: "Member Not Found",
+          description: "No member found with the provided name and phone number.",
           variant: "destructive",
         });
         setCheckInStep("form");
+        setSubmitting(false);
+        return;
       }
+
+      if (member.status === 'inactive') {
+        toast({
+          title: "Member Inactive",
+          description: "This member account is inactive. Please contact staff.",
+          variant: "destructive",
+        });
+        setCheckInStep("form");
+        setSubmitting(false);
+        return;
+      }
+
+      // Check for incomplete payments
+      const { data: incompleteTransactions, error: transactionError } = await supabase
+        .from('transaction')
+        .select('id, amount, status')
+        .eq('member_id', member.id)
+        .eq('status', 'incomplete');
+
+      if (transactionError) {
+        toast({
+          title: "Database Error",
+          description: "Unable to check payment status. Please try again.",
+          variant: "destructive",
+        });
+        setCheckInStep("form");
+        setSubmitting(false);
+        return;
+      }
+
+      // If there are incomplete payments, show warning but allow check-in
+      if (incompleteTransactions && incompleteTransactions.length > 0) {
+        toast({
+          title: "Overdue Payment Notice",
+          description: `${member.name} has overdue payments. Please visit the front desk.`,
+          variant: "destructive",
+        });
+      }
+
+      // Get current check-in count or create new record
+      const { data: existingCheckIn, error: checkInError } = await supabase
+        .from('check_ins')
+        .select('id, "checkin count"')
+        .eq('member_id', member.id)
+        .maybeSingle();
+
+      if (checkInError && checkInError.code !== 'PGRST116') {
+        toast({
+          title: "Database Error",
+          description: "Unable to process check-in. Please try again.",
+          variant: "destructive",
+        });
+        setCheckInStep("form");
+        setSubmitting(false);
+        return;
+      }
+
+      // Update or create check-in record
+      if (existingCheckIn) {
+        // Update existing record - increment check-in count
+        const { error: updateError } = await supabase
+          .from('check_ins')
+          .update({
+            'checkin count': (existingCheckIn['checkin count'] || 0) + 1,
+            'check_in_time': new Date().toISOString(),
+            'check_in date': new Date().toISOString().split('T')[0]
+          })
+          .eq('id', existingCheckIn.id);
+
+        if (updateError) {
+          toast({
+            title: "Update Error",
+            description: "Unable to update check-in record. Please try again.",
+            variant: "destructive",
+          });
+          setCheckInStep("form");
+          setSubmitting(false);
+          return;
+        }
+      } else {
+        // Create new check-in record
+        const { error: insertError } = await supabase
+          .from('check_ins')
+          .insert({
+            member_id: member.id,
+            'checkin count': 1,
+            'check_in_time': new Date().toISOString(),
+            'check_in date': new Date().toISOString().split('T')[0],
+            facility_area: 'general'
+          });
+
+        if (insertError) {
+          toast({
+            title: "Insert Error",
+            description: "Unable to create check-in record. Please try again.",
+            variant: "destructive",
+          });
+          setCheckInStep("form");
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      setCheckInStep("success");
+      toast({
+        title: "Check-In Successful! 🎉",
+        description: `Welcome ${member.name}! You're all checked in.`,
+      });
+      
+      // Auto close after success animation
+      setTimeout(() => {
+        handleDialogClose();
+      }, 2500);
+
     } catch (err: any) {
       toast({
-        title: "Connection Error",
-        description: "Unable to connect to verification service. Please try again.",
+        title: "System Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
       setCheckInStep("form");
