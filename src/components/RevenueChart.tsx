@@ -61,6 +61,10 @@ const RevenueChart = () => {
     .filter(t => t.status !== 'incomplete')
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
+  const averageMonthlyRevenue = revenueData.length > 0 
+    ? totalRevenue / revenueData.length 
+    : 0;
+
   const currentMonthRevenue = revenueData.length > 0 
     ? revenueData[revenueData.length - 1].revenue 
     : 0;
@@ -70,11 +74,11 @@ const RevenueChart = () => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Revenue Trends</h3>
-          <p className="text-sm text-gray-500">Total: ${totalRevenue.toLocaleString()}</p>
+          <p className="text-sm text-gray-500">Avg Monthly: Ksh {Math.round(averageMonthlyRevenue).toLocaleString()}</p>
         </div>
         <div className="flex items-center text-green-600">
           <DollarSign className="h-4 w-4 mr-1" />
-          <span className="text-sm font-medium">${currentMonthRevenue.toLocaleString()} this month</span>
+          <span className="text-sm font-medium">Ksh {currentMonthRevenue.toLocaleString()} this month</span>
         </div>
       </div>
       
@@ -100,11 +104,11 @@ const RevenueChart = () => {
                 height={60}
               />
               <YAxis 
-                tickFormatter={(value) => `$${value.toLocaleString()}`}
+                tickFormatter={(value) => `Ksh ${value.toLocaleString()}`}
               />
               <Tooltip 
                 formatter={(value, name) => [
-                  name === 'revenue' ? `$${value.toLocaleString()}` : value,
+                  name === 'revenue' ? `Ksh ${value.toLocaleString()}` : value,
                   name === 'revenue' ? 'Revenue' : 'Transactions'
                 ]}
               />
