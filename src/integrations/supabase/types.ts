@@ -92,8 +92,8 @@ export type Database = {
       }
       members: {
         Row: {
-          Birthdate: string | null
           email: string
+          gender: string | null
           id: number
           join_date: string
           name: string
@@ -101,8 +101,8 @@ export type Database = {
           status: string | null
         }
         Insert: {
-          Birthdate?: string | null
           email: string
+          gender?: string | null
           id?: never
           join_date: string
           name: string
@@ -110,8 +110,8 @@ export type Database = {
           status?: string | null
         }
         Update: {
-          Birthdate?: string | null
           email?: string
+          gender?: string | null
           id?: never
           join_date?: string
           name?: string

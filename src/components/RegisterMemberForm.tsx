@@ -3,22 +3,23 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { CalendarIcon, User, Mail, Phone, Calendar, Users, Gift } from "lucide-react";
+import { CalendarIcon, User, Mail, Phone, Calendar, Users, UserCheck, CreditCard } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 const statusOptions = ["active", "inactive", "pending", "expired"];
+const genderOptions = ["male", "female", "rather not say"];
 
 interface RegisterMemberFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const WEBHOOK_URL = "https://dolphin-precise-quetzal.ngrok-free.app/webhook-test/4820b04b-c696-4501-98b1-04a8e499b620";
 
 const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenChange }) => {
   const [form, setForm] = useState({
@@ -27,10 +28,12 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
     phone: "",
     join_date: undefined as Date | undefined,
     status: "active",
-    Birthdate: undefined as Date | undefined
+    gender: "male"
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [newMemberId, setNewMemberId] = useState<number | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const value = e.target.name === 'name' ? e.target.value : e.target.value.trim();
@@ -39,6 +42,10 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
 
   const handleDateChange = (field: string) => (date: Date | undefined) => {
     setForm({ ...form, [field]: date });
+  };
+
+  const handleGenderChange = (value: string) => {
+    setForm({ ...form, gender: value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,33 +66,28 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
         return;
       }
 
-      const payload = [{
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        join_date: form.join_date.toISOString().split("T")[0],
-        status: form.status,
-        Birthdate: form.Birthdate ? form.Birthdate.toISOString().split("T")[0] : ""
-      }];
+      // Insert member into database
+      const { data, error } = await supabase
+        .from('members')
+        .insert([{
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          join_date: form.join_date.toISOString(),
+          status: form.status,
+          gender: form.gender
+        }])
+        .select()
+        .single();
 
-      const response = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      if (error) throw error;
 
-      if (!response.ok) throw new Error("Submission failed");
-
+      setNewMemberId(data.id);
       toast({ title: "Success", description: "Member registered successfully!" });
-      setForm({
-        name: "",
-        email: "",
-        phone: "",
-        join_date: undefined,
-        status: "active",
-        Birthdate: undefined
-      });
-      onOpenChange(false);
+      
+      // Ask if they want to update payment
+      setShowPaymentForm(true);
+
     } catch (err) {
       toast({ title: "Error", description: "Failed to register member.", variant: "destructive" });
     } finally {
@@ -93,17 +95,179 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
     }
   };
 
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newMemberId) return;
+
+    const formData = new FormData(e.target as HTMLFormElement);
+    const amount = parseFloat(formData.get('amount') as string);
+    const period = formData.get('period') as string;
+
+    if (!amount || amount <= 0) {
+      toast({ title: "Error", description: "Please enter a valid amount.", variant: "destructive" });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const now = new Date();
+      let endingDate = new Date(now);
+      
+      if (period === 'daily') {
+        endingDate.setDate(now.getDate() + 1);
+        endingDate.setHours(0, 0, 0, 0); // Set to midnight of next day
+      } else if (period === 'weekly') {
+        endingDate.setDate(now.getDate() + 7);
+      } else if (period === 'monthly') {
+        endingDate.setDate(now.getDate() + 30);
+      }
+
+      const { error } = await supabase
+        .from('transaction')
+        .insert([{
+          member_id: newMemberId,
+          amount: amount,
+          period: period,
+          'start date': now.toISOString().split('T')[0],
+          'ending date': endingDate.toISOString(),
+          status: 'complete'
+        }]);
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Payment recorded successfully!" });
+      
+      // Reset form and close
+      setForm({
+        name: "",
+        email: "",
+        phone: "",
+        join_date: undefined,
+        status: "active",
+        gender: "male"
+      });
+      setShowPaymentForm(false);
+      setNewMemberId(null);
+      onOpenChange(false);
+
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to record payment.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSkipPayment = () => {
+    setForm({
+      name: "",
+      email: "",
+      phone: "",
+      join_date: undefined,
+      status: "active",
+      gender: "male"
+    });
+    setShowPaymentForm(false);
+    setNewMemberId(null);
+    onOpenChange(false);
+  };
+
+  if (showPaymentForm) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader className="pb-4">
+            <div className="flex items-center justify-center">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-blue-600">
+                  <CreditCard className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <DrawerTitle className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                    Update Payment
+                  </DrawerTitle>
+                  <p className="text-sm text-muted-foreground mt-1">Set up payment for the new member</p>
+                </div>
+              </div>
+            </div>
+          </DrawerHeader>
+          
+          <div className="px-4 pb-6 overflow-y-auto">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-muted/20">
+              <CardContent className="p-4">
+                <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Amount (KSh) *</Label>
+                      <Input
+                        name="amount"
+                        type="number"
+                        step="0.01"
+                        placeholder="Enter amount"
+                        required
+                        className="border-2 focus:border-primary transition-colors"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Payment Period *</Label>
+                      <select
+                        name="period"
+                        className="w-full border-2 rounded-md h-10 px-3 bg-background border-input focus:border-primary transition-colors"
+                        required
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleSkipPayment}
+                      className="flex-1 sm:flex-initial"
+                    >
+                      Skip Payment
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={submitting}
+                      className="flex-1 sm:flex-initial bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium"
+                    >
+                      {submitting ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Recording...</span>
+                        </div>
+                      ) : (
+                        "Record Payment"
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[90vh]">
-        <DrawerHeader className="pb-2">
+        <DrawerHeader className="pb-4">
           <div className="flex items-center justify-center">
             <div className="flex items-center space-x-3">
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600">
                 <Users className="w-6 h-6 text-white" />
               </div>
               <div>
-                <DrawerTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <DrawerTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   Register New Member
                 </DrawerTitle>
                 <p className="text-sm text-muted-foreground mt-1">Add a new member to your gym community</p>
@@ -112,26 +276,26 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
           </div>
         </DrawerHeader>
         
-        <div className="px-6 pb-6 overflow-y-auto">
+        <div className="px-4 pb-6 overflow-y-auto">
           <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-muted/20">
-            <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <CardContent className="p-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Personal Information Section */}
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-2 mb-4">
+                  <div className="flex items-center space-x-2 mb-3">
                     <User className="w-5 h-5 text-primary" />
                     <h3 className="text-lg font-semibold text-foreground">Personal Information</h3>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                      <Label className="text-sm font-medium flex items-center space-x-2">
                         <User className="w-4 h-4 text-primary" />
                         <span>Full Name *</span>
-                      </label>
+                      </Label>
                       <Input 
                         name="name" 
-                        placeholder="Enter member's full name" 
+                        placeholder="Enter full name" 
                         value={form.name} 
                         onChange={handleChange} 
                         required 
@@ -140,10 +304,10 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
                     </div>
                     
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                      <Label className="text-sm font-medium flex items-center space-x-2">
                         <Mail className="w-4 h-4 text-primary" />
-                        <span>Email Address *</span>
-                      </label>
+                        <span>Email *</span>
+                      </Label>
                       <Input 
                         name="email" 
                         type="email"
@@ -156,12 +320,12 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                      <Label className="text-sm font-medium flex items-center space-x-2">
                         <Phone className="w-4 h-4 text-primary" />
                         <span>Phone Number *</span>
-                      </label>
+                      </Label>
                       <Input 
                         name="phone" 
                         placeholder="07XXXXXXXX" 
@@ -173,68 +337,41 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
-                        <Gift className="w-4 h-4 text-primary" />
-                        <span>Date of Birth</span>
-                      </label>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="date"
-                          name="birthdateInput"
-                          placeholder="YYYY-MM-DD"
-                          value={form.Birthdate ? format(form.Birthdate, "yyyy-MM-dd") : ""}
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              const date = new Date(e.target.value);
-                              setForm({ ...form, Birthdate: date });
-                            } else {
-                              setForm({ ...form, Birthdate: undefined });
-                            }
-                          }}
-                          className="flex-1 border-2 focus:border-primary transition-colors"
-                        />
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="border-2 hover:border-primary transition-colors"
-                            >
-                              <CalendarIcon className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="start" className="p-0 w-auto">
-                            <CalendarComponent
-                              mode="single"
-                              selected={form.Birthdate}
-                              onSelect={handleDateChange("Birthdate")}
-                              initialFocus
-                              className="p-3 pointer-events-auto"
-                              captionLayout="dropdown-buttons"
-                              fromYear={1924}
-                              toYear={new Date().getFullYear()}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
+                      <Label className="text-sm font-medium flex items-center space-x-2">
+                        <UserCheck className="w-4 h-4 text-primary" />
+                        <span>Gender</span>
+                      </Label>
+                      <RadioGroup 
+                        value={form.gender} 
+                        onValueChange={handleGenderChange}
+                        className="flex flex-row space-x-6"
+                      >
+                        {genderOptions.map((option) => (
+                          <div key={option} className="flex items-center space-x-2">
+                            <RadioGroupItem value={option} id={option} />
+                            <Label htmlFor={option} className="text-sm capitalize">
+                              {option}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
                     </div>
                   </div>
                 </div>
 
                 {/* Membership Information Section */}
                 <div className="space-y-4 pt-4 border-t border-border">
-                  <div className="flex items-center space-x-2 mb-4">
+                  <div className="flex items-center space-x-2 mb-3">
                     <Calendar className="w-5 h-5 text-primary" />
                     <h3 className="text-lg font-semibold text-foreground">Membership Details</h3>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                      <Label className="text-sm font-medium flex items-center space-x-2">
                         <CalendarIcon className="w-4 h-4 text-primary" />
                         <span>Join Date *</span>
-                      </label>
+                      </Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
@@ -262,10 +399,10 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground flex items-center space-x-2">
+                      <Label className="text-sm font-medium flex items-center space-x-2">
                         <Users className="w-4 h-4 text-primary" />
-                        <span>Member Status</span>
-                      </label>
+                        <span>Status</span>
+                      </Label>
                       <select
                         name="status"
                         className="w-full border-2 rounded-md h-10 px-3 bg-background border-input focus:border-primary transition-colors"
@@ -283,16 +420,16 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-end gap-3 pt-6 border-t border-border">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
                   <DrawerClose asChild>
-                    <Button type="button" variant="outline" className="px-6">
+                    <Button type="button" variant="outline" className="flex-1 sm:flex-initial">
                       Cancel
                     </Button>
                   </DrawerClose>
                   <Button 
                     type="submit" 
                     disabled={submitting}
-                    className="px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="flex-1 sm:flex-initial bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     {submitting ? (
                       <div className="flex items-center space-x-2">
