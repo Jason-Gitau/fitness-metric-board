@@ -9,8 +9,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { UserCheck, Phone, User, Sparkles, CheckCircle, AlertTriangle } from "lucide-react";
+import { UserCheck, Phone, User, Sparkles, CheckCircle, AlertTriangle, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface MemberCheckInDialogProps {
@@ -26,14 +27,172 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
     name: "",
     phone: ""
   });
+  const [paymentData, setPaymentData] = useState({
+    amount: "",
+    period: ""
+  });
   const [submitting, setSubmitting] = useState(false);
-  const [checkInStep, setCheckInStep] = useState<"form" | "processing" | "success">("form");
+  const [checkInStep, setCheckInStep] = useState<"form" | "processing" | "payment" | "success">("form");
+  const [currentMember, setCurrentMember] = useState<any>(null);
 
   const handleInputChange = (field: string, value: string) => {
     setMemberData(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handlePaymentChange = (field: string, value: string) => {
+    setPaymentData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const calculateEndingDate = (period: string, startDate: Date) => {
+    const endDate = new Date(startDate);
+    
+    if (period === 'daily') {
+      // For daily, end at midnight of the same day
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === 'weekly') {
+      endDate.setDate(endDate.getDate() + 7);
+    } else if (period === 'monthly') {
+      endDate.setDate(endDate.getDate() + 30);
+    }
+    
+    return endDate;
+  };
+
+  const handlePaymentSubmit = async () => {
+    if (!paymentData.amount || !paymentData.period) {
+      toast({
+        title: "Missing Payment Details",
+        description: "Please enter amount and select payment period.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    
+    try {
+      const currentTime = new Date();
+      const endingDate = calculateEndingDate(paymentData.period, currentTime);
+
+      // Update or create transaction
+      const { error: transactionError } = await supabase
+        .from('transaction')
+        .upsert({
+          member_id: currentMember.id,
+          amount: parseFloat(paymentData.amount),
+          'start date': currentTime.toISOString().split('T')[0],
+          'ending date': endingDate.toISOString(),
+          period: paymentData.period,
+          status: 'complete'
+        });
+
+      if (transactionError) {
+        toast({
+          title: "Payment Update Failed",
+          description: "Unable to update payment. Please try again.",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      // Now proceed with check-in
+      await processCheckIn();
+      
+    } catch (err) {
+      toast({
+        title: "Payment Error",
+        description: "An error occurred while processing payment.",
+        variant: "destructive",
+      });
+      setSubmitting(false);
+    }
+  };
+
+  const processCheckIn = async () => {
+    try {
+      // Get current check-in record
+      const { data: existingCheckIn, error: checkInError } = await supabase
+        .from('check_ins')
+        .select('id, "checkin count"')
+        .eq('member_id', currentMember.id)
+        .maybeSingle();
+
+      if (checkInError && checkInError.code !== 'PGRST116') {
+        toast({
+          title: "Database Error",
+          description: "Unable to process check-in. Please try again.",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      const currentTime = new Date().toISOString();
+
+      // Update or create check-in record
+      if (existingCheckIn) {
+        const { error: updateError } = await supabase
+          .from('check_ins')
+          .update({
+            'checkin count': (existingCheckIn['checkin count'] || 0) + 1,
+            'check_in_time': currentTime
+          })
+          .eq('id', existingCheckIn.id);
+
+        if (updateError) {
+          toast({
+            title: "Check-in Update Failed",
+            description: "Unable to update check-in record.",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from('check_ins')
+          .insert({
+            member_id: currentMember.id,
+            'checkin count': 1,
+            'check_in_time': currentTime
+          });
+
+        if (insertError) {
+          toast({
+            title: "Check-in Creation Failed",
+            description: "Unable to create check-in record.",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      setCheckInStep("success");
+      toast({
+        title: "Check-In Successful! 🎉",
+        description: `Welcome ${currentMember.name}! You're all checked in.`,
+      });
+      
+      setTimeout(() => {
+        handleDialogClose();
+      }, 2500);
+
+    } catch (err) {
+      toast({
+        title: "System Error",
+        description: "An unexpected error occurred during check-in.",
+        variant: "destructive",
+      });
+      setSubmitting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +210,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
     setCheckInStep("processing");
 
     try {
-      // First, find the member by name and phone
+      // Find the member by name and phone
       const { data: member, error: memberError } = await supabase
         .from('members')
         .select('id, name, phone, status')
@@ -81,12 +240,16 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
         return;
       }
 
-      // Check for incomplete payments
-      const { data: incompleteTransactions, error: transactionError } = await supabase
+      setCurrentMember(member);
+
+      // Check the latest transaction ending date
+      const { data: latestTransaction, error: transactionError } = await supabase
         .from('transaction')
-        .select('id, amount, status')
+        .select('*')
         .eq('member_id', member.id)
-        .eq('status', 'incomplete');
+        .order('start date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (transactionError) {
         toast({
@@ -99,89 +262,20 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
         return;
       }
 
-      // If there are incomplete payments, show warning but allow check-in
-      if (incompleteTransactions && incompleteTransactions.length > 0) {
-        toast({
-          title: "Overdue Payment Notice",
-          description: `${member.name} has overdue payments. Please visit the front desk.`,
-          variant: "destructive",
-        });
-      }
-
-      // Get current check-in count or create new record
-      const { data: existingCheckIn, error: checkInError } = await supabase
-        .from('check_ins')
-        .select('id, "checkin count"')
-        .eq('member_id', member.id)
-        .maybeSingle();
-
-      if (checkInError && checkInError.code !== 'PGRST116') {
-        toast({
-          title: "Database Error",
-          description: "Unable to process check-in. Please try again.",
-          variant: "destructive",
-        });
-        setCheckInStep("form");
+      const currentTime = new Date();
+      
+      // Check if payment is valid
+      if (!latestTransaction || !latestTransaction['ending date'] || 
+          new Date(latestTransaction['ending date']) < currentTime) {
+        
+        // Payment expired or doesn't exist - show payment form
+        setCheckInStep("payment");
         setSubmitting(false);
         return;
       }
 
-      // Update or create check-in record
-      if (existingCheckIn) {
-        // Update existing record - increment check-in count
-        const { error: updateError } = await supabase
-          .from('check_ins')
-          .update({
-            'checkin count': (existingCheckIn['checkin count'] || 0) + 1,
-            'check_in_time': new Date().toISOString(),
-            'check_in date': new Date().toISOString().split('T')[0]
-          })
-          .eq('id', existingCheckIn.id);
-
-        if (updateError) {
-          toast({
-            title: "Update Error",
-            description: "Unable to update check-in record. Please try again.",
-            variant: "destructive",
-          });
-          setCheckInStep("form");
-          setSubmitting(false);
-          return;
-        }
-      } else {
-        // Create new check-in record
-        const { error: insertError } = await supabase
-          .from('check_ins')
-          .insert({
-            member_id: member.id,
-            'checkin count': 1,
-            'check_in_time': new Date().toISOString(),
-            'check_in date': new Date().toISOString().split('T')[0],
-            facility_area: 'general'
-          });
-
-        if (insertError) {
-          toast({
-            title: "Insert Error",
-            description: "Unable to create check-in record. Please try again.",
-            variant: "destructive",
-          });
-          setCheckInStep("form");
-          setSubmitting(false);
-          return;
-        }
-      }
-
-      setCheckInStep("success");
-      toast({
-        title: "Check-In Successful! 🎉",
-        description: `Welcome ${member.name}! You're all checked in.`,
-      });
-      
-      // Auto close after success animation
-      setTimeout(() => {
-        handleDialogClose();
-      }, 2500);
+      // Payment is valid - proceed with check-in
+      await processCheckIn();
 
     } catch (err: any) {
       toast({
@@ -190,21 +284,22 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
         variant: "destructive",
       });
       setCheckInStep("form");
-    } finally {
       setSubmitting(false);
     }
   };
 
   const handleDialogClose = () => {
     setMemberData({ name: "", phone: "" });
+    setPaymentData({ amount: "", period: "" });
     setCheckInStep("form");
     setSubmitting(false);
+    setCurrentMember(null);
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className="sm:max-w-md mx-auto overflow-hidden">
+      <DialogContent className="sm:max-w-md w-[95vw] max-w-md mx-auto overflow-hidden">
         {/* Animated background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 animate-pulse"></div>
         
@@ -213,22 +308,25 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center mb-2">
               {checkInStep === "form" && <UserCheck className="w-8 h-8 text-white" />}
               {checkInStep === "processing" && <Sparkles className="w-8 h-8 text-white animate-spin" />}
+              {checkInStep === "payment" && <CreditCard className="w-8 h-8 text-white" />}
               {checkInStep === "success" && <CheckCircle className="w-8 h-8 text-white" />}
             </div>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               {checkInStep === "form" && "Member Check-In"}
               {checkInStep === "processing" && "Verifying..."}
+              {checkInStep === "payment" && "Payment Required"}
               {checkInStep === "success" && "Welcome!"}
             </DialogTitle>
-            <DialogDescription className="text-center">
+            <DialogDescription className="text-center text-sm sm:text-base">
               {checkInStep === "form" && "Enter your details to check in"}
               {checkInStep === "processing" && "Verifying your membership details"}
+              {checkInStep === "payment" && "Your payment has expired. Please update your payment to continue."}
               {checkInStep === "success" && "You're successfully checked in!"}
             </DialogDescription>
           </DialogHeader>
 
           {checkInStep === "form" && (
-            <form onSubmit={handleSubmit} className="space-y-6 pt-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 pt-4 sm:pt-6">
               {/* Name Field */}
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -242,7 +340,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
                     onChange={(e) => handleInputChange("name", e.target.value)}
                     disabled={submitting}
                     required
-                    className="pl-10 border-2 focus:border-primary transition-all duration-300 hover:shadow-lg"
+                    className="pl-10 border-2 focus:border-primary transition-all duration-300 hover:shadow-lg text-base sm:text-sm"
                   />
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 </div>
@@ -262,27 +360,27 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     disabled={submitting}
                     required
-                    className="pl-10 border-2 focus:border-primary transition-all duration-300 hover:shadow-lg"
+                    className="pl-10 border-2 focus:border-primary transition-all duration-300 hover:shadow-lg text-base sm:text-sm"
                   />
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <Button 
                   type="button" 
                   variant="ghost" 
                   onClick={handleDialogClose}
                   disabled={submitting}
-                  className="flex-1 hover:bg-muted/80 transition-colors"
+                  className="w-full sm:flex-1 hover:bg-muted/80 transition-colors h-12 sm:h-auto"
                 >
                   Cancel
                 </Button>
                 <Button 
                   type="submit" 
                   disabled={submitting}
-                  className="flex-1 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-medium transition-all duration-300 hover:shadow-lg hover:scale-105"
+                  className="w-full sm:flex-1 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-medium transition-all duration-300 hover:shadow-lg hover:scale-105 h-12 sm:h-auto"
                 >
                   {submitting ? (
                     <div className="flex items-center gap-2">
@@ -301,29 +399,108 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
           )}
 
           {checkInStep === "processing" && (
-            <div className="flex flex-col items-center space-y-4 py-8">
+            <div className="flex flex-col items-center space-y-4 py-6 sm:py-8">
               <div className="relative">
-                <div className="w-20 h-20 border-4 border-primary/20 rounded-full"></div>
-                <div className="absolute inset-0 w-20 h-20 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-primary/20 rounded-full"></div>
+                <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
               <div className="text-center space-y-2">
-                <p className="font-medium">Verifying {memberData.name}</p>
-                <p className="text-sm text-muted-foreground">Please wait a moment...</p>
+                <p className="font-medium text-sm sm:text-base">Verifying {memberData.name}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Please wait a moment...</p>
+              </div>
+            </div>
+          )}
+
+          {checkInStep === "payment" && (
+            <div className="space-y-4 sm:space-y-6 pt-4 sm:pt-6">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 sm:p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-sm sm:text-base text-destructive">Payment Expired</p>
+                    <p className="text-xs sm:text-sm text-destructive/80 mt-1">
+                      Hi {currentMember?.name}, your gym access has expired. Please update your payment to continue.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Form */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <CreditCard className="w-4 h-4 text-primary" />
+                    <span>Amount (Ksh)</span>
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="Enter amount in Kenyan Shillings"
+                    value={paymentData.amount}
+                    onChange={(e) => handlePaymentChange("amount", e.target.value)}
+                    disabled={submitting}
+                    required
+                    className="border-2 focus:border-primary transition-all duration-300 text-base sm:text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Payment Period</label>
+                  <Select value={paymentData.period} onValueChange={(value) => handlePaymentChange("period", value)}>
+                    <SelectTrigger className="border-2 focus:border-primary transition-all duration-300 h-12 sm:h-10">
+                      <SelectValue placeholder="Select payment period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily (Valid until midnight today)</SelectItem>
+                      <SelectItem value="weekly">Weekly (7 days)</SelectItem>
+                      <SelectItem value="monthly">Monthly (30 days)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Payment Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={handleDialogClose}
+                    disabled={submitting}
+                    className="w-full sm:flex-1 hover:bg-muted/80 transition-colors h-12 sm:h-auto"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handlePaymentSubmit}
+                    disabled={submitting || !paymentData.amount || !paymentData.period}
+                    className="w-full sm:flex-1 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-medium transition-all duration-300 hover:shadow-lg hover:scale-105 h-12 sm:h-auto"
+                  >
+                    {submitting ? (
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 animate-spin" />
+                        <span>Processing Payment...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4" />
+                        <span>Update Payment & Check In</span>
+                      </div>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
 
           {checkInStep === "success" && (
-            <div className="flex flex-col items-center space-y-4 py-8">
+            <div className="flex flex-col items-center space-y-4 py-6 sm:py-8">
               <div className="relative">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center animate-bounce">
-                  <CheckCircle className="w-12 h-12 text-green-600" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center animate-bounce">
+                  <CheckCircle className="w-8 h-8 sm:w-12 sm:h-12 text-green-600" />
                 </div>
                 <div className="absolute -inset-2 bg-green-200/50 rounded-full animate-ping"></div>
               </div>
               <div className="text-center space-y-2">
-                <p className="font-bold text-lg">Welcome back, {memberData.name}!</p>
-                <p className="text-sm text-muted-foreground">Enjoy your workout! 💪</p>
+                <p className="font-bold text-base sm:text-lg">Welcome back, {currentMember?.name}!</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Enjoy your workout! 💪</p>
               </div>
             </div>
           )}

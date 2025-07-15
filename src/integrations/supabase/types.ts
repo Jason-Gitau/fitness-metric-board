@@ -53,7 +53,6 @@ export type Database = {
           check_out_time: string | null
           "checkin count": number | null
           duration_minutes: number | null
-          facility_area: string | null
           id: number
           "last nudge": string | null
           member_id: number
@@ -65,7 +64,6 @@ export type Database = {
           check_out_time?: string | null
           "checkin count"?: number | null
           duration_minutes?: number | null
-          facility_area?: string | null
           id?: never
           "last nudge"?: string | null
           member_id: number
@@ -77,7 +75,6 @@ export type Database = {
           check_out_time?: string | null
           "checkin count"?: number | null
           duration_minutes?: number | null
-          facility_area?: string | null
           id?: never
           "last nudge"?: string | null
           member_id?: number
