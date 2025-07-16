@@ -15,8 +15,8 @@ import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, subMon
 import DailyTransactionsDialog from './DailyTransactionsDialog';
 
 const RevenueChart = () => {
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [showDailyDialog, setShowDailyDialog] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [showMonthlyDialog, setShowMonthlyDialog] = useState(false);
   const { data: transactions = [], isLoading, error } = useQuery({
     queryKey: ["revenue_data"],
     queryFn: async () => {
@@ -29,27 +29,27 @@ const RevenueChart = () => {
     },
   });
 
-  // Fetch daily transactions when a date is selected
-  const { data: dailyTransactions = [] } = useQuery({
-    queryKey: ["daily_transactions", selectedDate],
+  // Fetch monthly transactions when a month is selected
+  const { data: monthlyTransactions = [] } = useQuery({
+    queryKey: ["monthly_transactions", selectedMonth],
     queryFn: async () => {
-      if (!selectedDate) return [];
+      if (!selectedMonth) return [];
       
-      const startDate = startOfDay(new Date(selectedDate));
-      const endDate = endOfDay(new Date(selectedDate));
+      const monthStart = startOfMonth(new Date(selectedMonth));
+      const monthEnd = endOfMonth(new Date(selectedMonth));
       
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
-        .gte("start_date", startDate.toISOString())
-        .lte("start_date", endDate.toISOString())
+        .gte("start_date", monthStart.toISOString())
+        .lte("start_date", monthEnd.toISOString())
         .eq("status", "complete")
         .order("start_date", { ascending: true });
         
       if (error) throw error;
       return data ?? [];
     },
-    enabled: !!selectedDate,
+    enabled: !!selectedMonth,
   });
 
   const revenueData = React.useMemo(() => {
@@ -186,8 +186,8 @@ const RevenueChart = () => {
                 className="cursor-pointer"
                 onClick={(data) => {
                   if (data && data.date) {
-                    setSelectedDate(data.date);
-                    setShowDailyDialog(true);
+                    setSelectedMonth(data.date);
+                    setShowMonthlyDialog(true);
                   }
                 }}
               />
@@ -196,12 +196,13 @@ const RevenueChart = () => {
         )}
       </div>
       
-      {/* Daily Transactions Dialog */}
+      {/* Monthly Transactions Dialog */}
       <DailyTransactionsDialog
-        open={showDailyDialog}
-        onOpenChange={setShowDailyDialog}
-        date={selectedDate || ''}
-        transactions={dailyTransactions}
+        open={showMonthlyDialog}
+        onOpenChange={setShowMonthlyDialog}
+        date={selectedMonth || ''}
+        transactions={monthlyTransactions}
+        isMonthly={true}
       />
     </div>
   );

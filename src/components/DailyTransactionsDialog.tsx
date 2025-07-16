@@ -25,6 +25,7 @@ interface DailyTransactionsDialogProps {
   onOpenChange: (open: boolean) => void;
   date: string;
   transactions: Transaction[];
+  isMonthly?: boolean;
 }
 
 const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
@@ -32,6 +33,7 @@ const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
   onOpenChange,
   date,
   transactions,
+  isMonthly = false,
 }) => {
   const totalAmount = transactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
@@ -41,7 +43,12 @@ const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Calendar className="h-5 w-5 text-blue-600" />
-            <span>Transactions for {date && !isNaN(new Date(date).getTime()) ? format(new Date(date), 'MMMM d, yyyy') : 'Invalid Date'}</span>
+            <span>
+              {isMonthly 
+                ? `Transactions for ${date && !isNaN(new Date(date).getTime()) ? format(new Date(date), 'MMMM yyyy') : 'Invalid Date'}`
+                : `Transactions for ${date && !isNaN(new Date(date).getTime()) ? format(new Date(date), 'MMMM d, yyyy') : 'Invalid Date'}`
+              }
+            </span>
           </DialogTitle>
         </DialogHeader>
 
@@ -66,7 +73,7 @@ const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
           <div className="space-y-3">
             {transactions.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No transactions found for this date.
+                No transactions found for this {isMonthly ? 'month' : 'date'}.
               </div>
             ) : (
               transactions.map((transaction) => (
