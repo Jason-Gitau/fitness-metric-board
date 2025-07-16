@@ -64,10 +64,17 @@ const RevenueChart = () => {
       const monthEnd = endOfMonth(month);
       
       const monthTransactions = transactions.filter(transaction => {
-        const transactionDate = parseISO(transaction["start date"]);
-        return transactionDate >= monthStart && 
-               transactionDate <= monthEnd &&
-               transaction.status !== 'incomplete'; // Only count completed transactions
+        if (!transaction["start date"]) return false;
+        try {
+          const transactionDate = parseISO(transaction["start date"]);
+          return !isNaN(transactionDate.getTime()) &&
+                 transactionDate >= monthStart && 
+                 transactionDate <= monthEnd &&
+                 transaction.status !== 'incomplete'; // Only count completed transactions
+        } catch (error) {
+          console.warn('Invalid date in transaction:', transaction["start date"]);
+          return false;
+        }
       });
 
       const totalRevenue = monthTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);

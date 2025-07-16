@@ -38,7 +38,7 @@ const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Calendar className="h-5 w-5 text-blue-600" />
-            <span>Transactions for {format(new Date(date), 'MMMM d, yyyy')}</span>
+            <span>Transactions for {date && !isNaN(new Date(date).getTime()) ? format(new Date(date), 'MMMM d, yyyy') : 'Invalid Date'}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -85,11 +85,11 @@ const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
                           {transaction.period && (
                             <div>Period: {transaction.period}</div>
                           )}
-                          {transaction["ending date"] && (
-                            <div>
-                              Expires: {format(new Date(transaction["ending date"]), 'MMM d, yyyy')}
-                            </div>
-                          )}
+                           {transaction["ending date"] && !isNaN(new Date(transaction["ending date"]).getTime()) && (
+                             <div>
+                               Expires: {format(new Date(transaction["ending date"]), 'MMM d, yyyy')}
+                             </div>
+                           )}
                         </div>
                       </div>
                     </div>
@@ -103,9 +103,11 @@ const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
                       }`}>
                         {transaction.status || 'pending'}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {format(new Date(transaction["start date"]), 'h:mm a')}
-                      </div>
+                       <div className="text-xs text-gray-500 mt-1">
+                         {transaction["start date"] && !isNaN(new Date(transaction["start date"]).getTime()) 
+                           ? format(new Date(transaction["start date"]), 'h:mm a')
+                           : 'Invalid time'}
+                       </div>
                     </div>
                   </div>
                 </div>
