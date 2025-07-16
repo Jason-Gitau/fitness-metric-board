@@ -116,12 +116,11 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
       let endingDate = new Date(now);
       
       if (period === 'daily') {
-        endingDate.setDate(now.getDate() + 1);
-        endingDate.setHours(0, 0, 0, 0); // Set to midnight of next day
+        endingDate.setHours(23, 59, 59, 999); // Valid till midnight today
       } else if (period === 'weekly') {
         endingDate.setDate(now.getDate() + 7);
       } else if (period === 'monthly') {
-        endingDate.setDate(now.getDate() + 30);
+        endingDate.setMonth(now.getMonth() + 1);
       }
 
       const { error } = await supabase
@@ -130,9 +129,12 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
           member_id: newMemberId,
           amount: amount,
           period: period,
-          start_date: now.toISOString().split('T')[0],
+          start_date: now.toISOString(),
           ending_date: endingDate.toISOString(),
-          status: 'complete'
+          status: 'complete',
+          payment_method: 'cash',
+          description: `${period} payment for new member registration`,
+          updated_at: new Date().toISOString()
         });
 
       if (error) throw error;

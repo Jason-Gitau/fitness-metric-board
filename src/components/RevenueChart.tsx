@@ -43,7 +43,7 @@ const RevenueChart = () => {
         .select("*")
         .gte("start_date", startDate.toISOString())
         .lte("start_date", endDate.toISOString())
-        .neq("status", "incomplete")
+        .eq("status", "complete")
         .order("start_date", { ascending: true });
         
       if (error) throw error;
@@ -64,15 +64,15 @@ const RevenueChart = () => {
       const monthEnd = endOfMonth(month);
       
       const monthTransactions = transactions.filter(transaction => {
-        if (!transaction["start date"]) return false;
+        if (!transaction.start_date) return false;
         try {
-          const transactionDate = parseISO(transaction["start date"]);
+          const transactionDate = parseISO(transaction.start_date);
           return !isNaN(transactionDate.getTime()) &&
                  transactionDate >= monthStart && 
                  transactionDate <= monthEnd &&
-                 transaction.status !== 'incomplete'; // Only count completed transactions
+                 transaction.status === 'complete'; // Only count completed transactions
         } catch (error) {
-          console.warn('Invalid date in transaction:', transaction["start date"]);
+          console.warn('Invalid date in transaction:', transaction.start_date);
           return false;
         }
       });
@@ -91,9 +91,36 @@ const RevenueChart = () => {
     return monthlyRevenue;
   }, [transactions]);
 
-  const totalRevenue = transactions
-    .filter(t => t.status !== 'incomplete')
-    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  // Calculate insights for completed transactions only
+  const completedTransactions = transactions.filter(t => t.status === 'complete');
+  const totalRevenue = completedTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  
+  // Today's revenue insights
+  const today = new Date();
+  const todayStart = startOfDay(today);
+  const todayEnd = endOfDay(today);
+  const todayTransactions = completedTransactions.filter(t => {
+    if (!t.start_date) return false;
+    const transactionDate = new Date(t.start_date);
+    return transactionDate >= todayStart && transactionDate <= todayEnd;
+  });
+  const todayRevenue = todayTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  
+  // Payment method breakdown for current month
+  const currentMonth = new Date();
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const currentMonthTransactions = completedTransactions.filter(t => {
+    if (!t.start_date) return false;
+    const transactionDate = new Date(t.start_date);
+    return transactionDate >= monthStart && transactionDate <= monthEnd;
+  });
+  
+  const paymentMethodBreakdown = currentMonthTransactions.reduce((acc, t) => {
+    const method = t.payment_method || 'unknown';
+    acc[method] = (acc[method] || 0) + Number(t.amount || 0);
+    return acc;
+  }, {} as Record<string, number>);
 
   const averageMonthlyRevenue = revenueData.length > 0 
     ? totalRevenue / revenueData.length 
@@ -108,7 +135,11 @@ const RevenueChart = () => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Revenue Trends</h3>
-          <p className="text-sm text-gray-500">Avg Monthly: Ksh {Math.round(averageMonthlyRevenue).toLocaleString()}</p>
+          <p className="text-sm text-gray-500">Today: Ksh {todayRevenue.toLocaleString()} • Avg Monthly: Ksh {Math.round(averageMonthlyRevenue).toLocaleString()}</p>
+          <div className="text-xs text-gray-400 mt-1">
+            Cash: Ksh {(paymentMethodBreakdown.cash || 0).toLocaleString()} • 
+            M-Pesa: Ksh {(paymentMethodBreakdown.mpesa || 0).toLocaleString()} this month
+          </div>
         </div>
         <div className="flex items-center text-green-600">
           <TrendingUp className="h-4 w-4 mr-1" />
