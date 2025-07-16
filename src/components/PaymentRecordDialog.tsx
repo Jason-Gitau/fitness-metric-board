@@ -31,6 +31,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
     amount: ""
   });
   const [paymentDuration, setPaymentDuration] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "mpesa">("cash");
   const [submitting, setSubmitting] = useState(false);
   const [recordStep, setRecordStep] = useState<"form" | "processing" | "success">("form");
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
@@ -82,41 +83,41 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
     setRecordStep("processing");
 
     try {
-      // Calculate end date based on payment duration
+      // Get member ID from selected member or search by name
+      let memberId = selectedMember;
+      
+      if (!memberId && paymentData.name.trim()) {
+        const { data: existingMembers, error: searchError } = await supabase
+          .from("members")
+          .select("id")
+          .eq("name", paymentData.name.trim())
+          .limit(1);
+        
+        if (searchError) throw new Error("Failed to search for member");
+        
+        if (existingMembers && existingMembers.length > 0) {
+          memberId = existingMembers[0].id;
+        }
+      }
+
+      if (!memberId) {
+        throw new Error("Member not found. Please select a valid member.");
+      }
+
+      // Calculate dates
       const today = new Date();
+      const startDate = new Date(today);
       let endDate: Date;
       
       if (paymentDuration === "daily") {
         endDate = new Date(today);
-        endDate.setDate(today.getDate() + 1);
+        endDate.setHours(23, 59, 59, 999); // Valid till midnight
       } else if (paymentDuration === "weekly") {
         endDate = new Date(today);
         endDate.setDate(today.getDate() + 7);
       } else { // monthly
         endDate = new Date(today);
         endDate.setMonth(today.getMonth() + 1);
-      }
-
-      let memberId = selectedMember;
-
-      // If no existing member selected, create a new one
-      if (!memberId) {
-        const { data: newMember, error: memberError } = await supabase
-          .from("members")
-          .insert({
-            name: paymentData.name.trim(),
-            phone: paymentData.phone.trim(),
-            email: `${paymentData.phone.trim()}@gym.local`, // Generate temp email
-            membership_type: 'basic',
-            status: 'active'
-          })
-          .select()
-          .single();
-
-        if (memberError) {
-          throw new Error("Failed to create member record");
-        }
-        memberId = newMember.id;
       }
 
       // Create transaction record
@@ -126,11 +127,12 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
           member_id: memberId,
           amount: Number(paymentData.amount),
           period: paymentDuration,
-          start_date: today.toISOString().split('T')[0],
-          ending_date: endDate.toISOString().split('T')[0],
+          start_date: startDate.toISOString(),
+          ending_date: endDate.toISOString(),
           status: 'complete',
-          payment_method: 'cash',
-          description: `${paymentDuration} payment recorded manually`
+          payment_method: paymentMethod,
+          description: `${paymentDuration} payment recorded manually`,
+          updated_at: new Date().toISOString()
         });
 
       if (transactionError) {
@@ -164,6 +166,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
   const handleDialogClose = () => {
     setPaymentData({ name: "", phone: "", amount: "" });
     setPaymentDuration("daily");
+    setPaymentMethod("cash");
     setRecordStep("form");
     setSubmitting(false);
     setSelectedMember(null);
@@ -305,6 +308,28 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="monthly" id="monthly" />
                     <Label htmlFor="monthly" className="text-sm font-medium cursor-pointer">Monthly</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Payment Method */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <CreditCard className="w-4 h-4 text-green-600" />
+                  <span>Payment Method</span>
+                </label>
+                <RadioGroup
+                  value={paymentMethod}
+                  onValueChange={(value: "cash" | "mpesa") => setPaymentMethod(value)}
+                  className="grid grid-cols-2 gap-4 pt-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cash" id="cash" />
+                    <Label htmlFor="cash" className="text-sm font-medium cursor-pointer">Cash</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="mpesa" id="mpesa" />
+                    <Label htmlFor="mpesa" className="text-sm font-medium cursor-pointer">M-Pesa</Label>
                   </div>
                 </RadioGroup>
               </div>
