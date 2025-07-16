@@ -244,7 +244,8 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
         .from('transactions')
         .select('*')
         .eq('member_id', member.id)
-        .order('start_date', { ascending: false })
+        .eq('status', 'complete')
+        .order('ending_date', { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -261,12 +262,17 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
 
       const currentTime = new Date();
       
-      // Check if payment is valid
+      // Check if member has valid payment (not overdue)
       if (!latestTransaction || !latestTransaction.ending_date || 
           new Date(latestTransaction.ending_date) < currentTime) {
         
-        // Payment expired or doesn't exist - show payment form
-        setCheckInStep("payment");
+        // Member is overdue - reject check-in
+        toast({
+          title: "Check-In Denied ❌",
+          description: `${member.name} has an overdue payment. Please update payment before checking in.`,
+          variant: "destructive",
+        });
+        setCheckInStep("form");
         setSubmitting(false);
         return;
       }
