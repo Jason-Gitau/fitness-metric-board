@@ -21,9 +21,9 @@ const RevenueChart = () => {
     queryKey: ["revenue_data"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("transaction")
+        .from("transactions")
         .select("*, member_id")
-        .order("\"start date\"", { ascending: true });
+        .order("start_date", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
@@ -39,12 +39,12 @@ const RevenueChart = () => {
       const endDate = endOfDay(new Date(selectedDate));
       
       const { data, error } = await supabase
-        .from("transaction")
+        .from("transactions")
         .select("*")
-        .gte("start date", startDate.toISOString())
-        .lte("start date", endDate.toISOString())
+        .gte("start_date", startDate.toISOString())
+        .lte("start_date", endDate.toISOString())
         .neq("status", "incomplete")
-        .order("start date", { ascending: true });
+        .order("start_date", { ascending: true });
         
       if (error) throw error;
       return data ?? [];

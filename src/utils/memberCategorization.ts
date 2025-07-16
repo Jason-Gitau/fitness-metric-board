@@ -30,20 +30,19 @@ export interface CategorizationResult {
 }
 
 export async function fetchMembersWithTransactions(): Promise<MemberWithTransaction[]> {
-  // Read directly from transaction table to get accurate renewal data
+  // Read directly from transactions table to get accurate renewal data
   const { data, error } = await supabase
-    .from("transaction")
+    .from("transactions")
     .select(`
       status,
-      "ending date",
+      ending_date,
       members!inner(
         id,
         name,
         email,
         phone,
         join_date,
-        status,
-        Birthdate
+        status
       )
     `);
 
@@ -65,7 +64,7 @@ export async function fetchMembersWithTransactions(): Promise<MemberWithTransact
     
     memberMap.get(memberId)!.transaction!.push({
       status: txn.status,
-      "ending date": txn["ending date"]
+      "ending date": txn.ending_date
     });
   });
   
@@ -85,8 +84,11 @@ export function categorizeMembers(members: MemberWithTransaction[]) {
   };
 
   members.forEach((member) => {
-    // If status is explicitly set to inactive or suspended
-    if (member.status?.toLowerCase() === 'inactive' || member.status?.toLowerCase() === 'suspended') {
+    // Use the member status column directly to categorize members
+    const memberStatus = member.status?.toLowerCase() || 'active';
+
+    // Categorize based on member status
+    if (memberStatus === 'inactive' || memberStatus === 'suspended') {
       result.inactive.push({
         id: member.id,
         name: member.name,
@@ -95,27 +97,16 @@ export function categorizeMembers(members: MemberWithTransaction[]) {
       return;
     }
 
-    // Check if member joined more than 60 days ago and has inactive status
-    const joinDate = parseISO(member.join_date);
-    const daysSinceJoin = differenceInCalendarDays(today, joinDate);
-    
-    if (daysSinceJoin > 60 && (!member.status || member.status.toLowerCase() !== 'active')) {
-      result.inactive.push({
-        id: member.id,
-        name: member.name,
-        reason: "Long-term member with non-active status",
-      });
-      return;
+    // All other statuses (active, etc.) are considered active members
+    if (memberStatus === 'active') {
+      result.active.push(member);
     }
 
-    // Add to active (regardless of payment status)
-    result.active.push(member);
-
-    // Check transaction data for overdue and upcoming renewals (separate from active status)
+    // Check transaction data for overdue and upcoming renewals
     if (member.transaction && Array.isArray(member.transaction)) {
       member.transaction.forEach((txn: any) => {
-        // Check for overdue (incomplete status)
-        if (txn.status?.toLowerCase() === 'incomplete') {
+        // Check for overdue (incomplete/failed payment status)
+        if (txn.status?.toLowerCase() === 'incomplete' || txn.status?.toLowerCase() === 'failed') {
           result.overdue.push(member);
         }
 

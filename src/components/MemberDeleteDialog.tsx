@@ -41,8 +41,7 @@ const MemberDeleteDialog: React.FC<MemberDeleteDialogProps> = ({
       await Promise.all([
         supabase.from('check_ins').delete().eq('member_id', member.id),
         supabase.from('messages').delete().eq('member_id', member.id),
-        supabase.from('transaction').delete().eq('member_id', member.id),
-        supabase.from('booking').delete().eq('member_id', member.id)
+        supabase.from('transactions').delete().eq('member_id', member.id)
       ]);
 
       // Then delete the member

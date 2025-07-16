@@ -82,12 +82,12 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
 
       // Update or create transaction
       const { error: transactionError } = await supabase
-        .from('transaction')
+        .from('transactions')
         .upsert({
           member_id: currentMember.id,
           amount: parseFloat(paymentData.amount),
-          'start date': currentTime.toISOString().split('T')[0],
-          'ending date': endingDate.toISOString(),
+          start_date: currentTime.toISOString().split('T')[0],
+          ending_date: endingDate.toISOString(),
           period: paymentData.period,
           status: 'complete'
         });
@@ -161,7 +161,8 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
           .insert({
             member_id: currentMember.id,
             'checkin count': 1,
-            'check_in_time': currentTime
+            check_in_time: currentTime,
+            created_at: currentTime
           });
 
         if (insertError) {
@@ -244,10 +245,10 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
 
       // Check the latest transaction ending date
       const { data: latestTransaction, error: transactionError } = await supabase
-        .from('transaction')
+        .from('transactions')
         .select('*')
         .eq('member_id', member.id)
-        .order('start date', { ascending: false })
+        .order('start_date', { ascending: false })
         .limit(1)
         .maybeSingle();
 

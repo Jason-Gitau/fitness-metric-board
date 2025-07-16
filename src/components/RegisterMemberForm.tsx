@@ -33,7 +33,7 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
 
   const [submitting, setSubmitting] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [newMemberId, setNewMemberId] = useState<number | null>(null);
+  const [newMemberId, setNewMemberId] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const value = e.target.name === 'name' ? e.target.value : e.target.value.trim();
@@ -125,15 +125,15 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
       }
 
       const { error } = await supabase
-        .from('transaction')
-        .insert([{
+        .from('transactions')
+        .insert({
           member_id: newMemberId,
           amount: amount,
           period: period,
-          'start date': now.toISOString().split('T')[0],
-          'ending date': endingDate.toISOString(),
+          start_date: now.toISOString().split('T')[0],
+          ending_date: endingDate.toISOString(),
           status: 'complete'
-        }]);
+        });
 
       if (error) throw error;
 

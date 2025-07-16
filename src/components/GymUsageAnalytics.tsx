@@ -21,7 +21,7 @@ const GymUsageAnalytics = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("check_ins")
-        .select("duration_minutes, check_in_time, check_out_time")
+        .select("duration, check_in_time, \"checkout time\"")
         .not("check_in_time", "is", null);
       if (error) throw error;
       return data ?? [];
@@ -38,10 +38,14 @@ const GymUsageAnalytics = () => {
       };
     }
 
-    // Calculate average duration
-    const validDurations = checkIns.filter(c => c.duration_minutes && c.duration_minutes > 0);
+    // Calculate average duration (convert time string to minutes)
+    const validDurations = checkIns.filter(c => c.duration);
     const avgDuration = validDurations.length > 0 
-      ? validDurations.reduce((sum, c) => sum + c.duration_minutes, 0) / validDurations.length 
+      ? validDurations.reduce((sum, c) => {
+          // Parse duration string (HH:mm:ss format) to minutes
+          const [hours, minutes] = c.duration.split(':').map(Number);
+          return sum + (hours * 60 + minutes);
+        }, 0) / validDurations.length 
       : 0;
 
     // Hourly check-in distribution
@@ -53,8 +57,8 @@ const GymUsageAnalytics = () => {
         const hour = getHours(parseISO(checkIn.check_in_time));
         hourlyCheckInCounts[hour]++;
       }
-      if (checkIn.check_out_time) {
-        const hour = getHours(parseISO(checkIn.check_out_time));
+      if (checkIn["checkout time"]) {
+        const hour = getHours(parseISO(checkIn["checkout time"]));
         hourlyCheckOutCounts[hour]++;
       }
     });

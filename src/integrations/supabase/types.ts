@@ -17,21 +17,30 @@ export type Database = {
       check_ins: {
         Row: {
           check_in_time: string
+          "checkin count": number | null
+          "checkout time": string | null
           created_at: string
+          duration: string | null
           id: string
           member_id: string | null
           user_id: string | null
         }
         Insert: {
           check_in_time?: string
-          created_at?: string
+          "checkin count"?: number | null
+          "checkout time"?: string | null
+          created_at: string
+          duration?: string | null
           id?: string
           member_id?: string | null
           user_id?: string | null
         }
         Update: {
           check_in_time?: string
+          "checkin count"?: number | null
+          "checkout time"?: string | null
           created_at?: string
+          duration?: string | null
           id?: string
           member_id?: string | null
           user_id?: string | null
