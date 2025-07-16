@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, User, Edit3, Trash2 } from 'lucide-react';
+import { Search, User, Edit3, Trash2, CreditCard } from 'lucide-react';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
@@ -9,11 +9,13 @@ type Member = Tables<'members'>;
 interface MemberSearchDropdownProps {
   onMemberSelect: (member: Member) => void;
   onMemberDelete: (member: Member) => void;
+  onMemberPayment?: (member: Member) => void;
 }
 
 const MemberSearchDropdown: React.FC<MemberSearchDropdownProps> = ({ 
   onMemberSelect, 
-  onMemberDelete 
+  onMemberDelete,
+  onMemberPayment 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -195,6 +197,20 @@ const MemberSearchDropdown: React.FC<MemberSearchDropdownProps> = ({
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
+                      {onMemberPayment && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMemberPayment(member);
+                            setIsOpen(false);
+                            setSearchTerm('');
+                          }}
+                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                          title="Process Payment"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={(e) => handleDeleteClick(e, member)}
                         className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"

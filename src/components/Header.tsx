@@ -4,6 +4,7 @@ import { Bell, Menu, LogOut, LogIn, Search } from 'lucide-react';
 import RegisterMemberForm from './RegisterMemberForm';
 import MemberCheckInDialog from './MemberCheckInDialog';
 import PaymentRecordDialog from './PaymentRecordDialog';
+import StripePaymentDialog from './StripePaymentDialog';
 import MemberSearchDropdown from './MemberSearchDropdown';
 import MemberEditDialog from './MemberEditDialog';
 import MemberDeleteDialog from './MemberDeleteDialog';
@@ -20,9 +21,11 @@ const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [stripePaymentOpen, setStripePaymentOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [selectedMemberForPayment, setSelectedMemberForPayment] = useState<Member | null>(null);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const { user, loading } = useAuthState();
   const navigate = useNavigate();
@@ -44,12 +47,17 @@ const Header = () => {
     setMenuOpen(false);
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+  const handleStripePaymentClick = () => {
+    setStripePaymentOpen(true);
+    setMenuOpen(false);
   };
 
   const goToLogin = () => {
+    navigate("/auth");
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate("/auth");
   };
 
@@ -61,6 +69,11 @@ const Header = () => {
   const handleMemberDelete = (member: Member) => {
     setSelectedMember(member);
     setDeleteDialogOpen(true);
+  };
+
+  const handleMemberPayment = (member: Member) => {
+    setSelectedMemberForPayment(member);
+    setStripePaymentOpen(true);
   };
 
   const handleMemberUpdated = () => {
@@ -87,6 +100,7 @@ const Header = () => {
           <MemberSearchDropdown 
             onMemberSelect={handleMemberSelect}
             onMemberDelete={handleMemberDelete}
+            onMemberPayment={handleMemberPayment}
           />
         </div>
         {/* Actions/Notifications + Hamburger */}
@@ -163,6 +177,12 @@ const Header = () => {
                 >
                   Record payment
                 </button>
+                <button
+                  onClick={handleStripePaymentClick}
+                  className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 border-t"
+                >
+                  Online payment
+                </button>
               </div>
             )}
           </div>
@@ -179,6 +199,10 @@ const Header = () => {
             }}
             onMemberDelete={(member) => {
               handleMemberDelete(member);
+              setShowMobileSearch(false);
+            }}
+            onMemberPayment={(member) => {
+              handleMemberPayment(member);
               setShowMobileSearch(false);
             }}
           />
@@ -204,6 +228,12 @@ const Header = () => {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onMemberDeleted={handleMemberDeleted}
+      />
+      {/* Stripe Payment Dialog */}
+      <StripePaymentDialog 
+        member={selectedMemberForPayment}
+        open={stripePaymentOpen}
+        onOpenChange={setStripePaymentOpen}
       />
     </header>
   );

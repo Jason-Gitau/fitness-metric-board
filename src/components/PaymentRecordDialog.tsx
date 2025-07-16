@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { CreditCard, Phone, User, Sparkles, CheckCircle, DollarSign, Calendar } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface PaymentRecordDialogProps {
   open: boolean;
@@ -22,6 +24,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
   open,
   onOpenChange,
 }) => {
+  const { toast } = useToast();
   const [paymentData, setPaymentData] = useState({
     name: "",
     phone: "",
@@ -30,6 +33,23 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
   const [paymentDuration, setPaymentDuration] = useState<"daily" | "weekly" | "monthly">("daily");
   const [submitting, setSubmitting] = useState(false);
   const [recordStep, setRecordStep] = useState<"form" | "processing" | "success">("form");
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
+
+  // Search for existing members
+  const { data: members = [] } = useQuery({
+    queryKey: ["search_members", paymentData.name],
+    queryFn: async () => {
+      if (!paymentData.name.trim()) return [];
+      const { data, error } = await supabase
+        .from("members")
+        .select("*")
+        .ilike("name", `%${paymentData.name}%`)
+        .limit(5);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: paymentData.name.length > 2
+  });
 
   const handleInputChange = (field: string, value: string) => {
     setPaymentData(prev => ({
@@ -67,7 +87,8 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
       let endDate: Date;
       
       if (paymentDuration === "daily") {
-        endDate = today;
+        endDate = new Date(today);
+        endDate.setDate(today.getDate() + 1);
       } else if (paymentDuration === "weekly") {
         endDate = new Date(today);
         endDate.setDate(today.getDate() + 7);
@@ -76,48 +97,62 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
         endDate.setMonth(today.getMonth() + 1);
       }
 
-      // Send data to webhook for payment recording
-      const res = await fetch(
-        "https://PLACEHOLDER_WEBHOOK_URL/payment-record",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      let memberId = selectedMember;
+
+      // If no existing member selected, create a new one
+      if (!memberId) {
+        const { data: newMember, error: memberError } = await supabase
+          .from("members")
+          .insert({
             name: paymentData.name.trim(),
             phone: paymentData.phone.trim(),
-            amount: Number(paymentData.amount),
-            duration: paymentDuration,
-            endDate: endDate.toISOString(),
-            timestamp: new Date().toISOString()
-          }),
+            email: `${paymentData.phone.trim()}@gym.local`, // Generate temp email
+            membership_type: 'basic',
+            status: 'active'
+          })
+          .select()
+          .single();
+
+        if (memberError) {
+          throw new Error("Failed to create member record");
         }
-      );
-      
-      const result = await res.json().catch(() => ({}));
-      
-      if (res.ok) {
-        setRecordStep("success");
-        toast({
-          title: "Payment Recorded! 💰",
-          description: result?.message || `Payment of $${paymentData.amount} recorded for ${paymentData.name}.`,
-        });
-        
-        // Auto close after success animation
-        setTimeout(() => {
-          handleDialogClose();
-        }, 3000);
-      } else {
-        toast({
-          title: "Recording Failed",
-          description: result?.message || "Unable to record payment. Please try again.",
-          variant: "destructive",
-        });
-        setRecordStep("form");
+        memberId = newMember.id;
       }
-    } catch (err: any) {
+
+      // Create transaction record
+      const { error: transactionError } = await supabase
+        .from("transactions")
+        .insert({
+          member_id: memberId,
+          amount: Number(paymentData.amount),
+          period: paymentDuration,
+          start_date: today.toISOString().split('T')[0],
+          ending_date: endDate.toISOString().split('T')[0],
+          status: 'complete',
+          payment_method: 'cash',
+          description: `${paymentDuration} payment recorded manually`
+        });
+
+      if (transactionError) {
+        throw new Error("Failed to record payment transaction");
+      }
+
+      setRecordStep("success");
       toast({
-        title: "Connection Error",
-        description: "Unable to connect to payment service. Please try again.",
+        title: "Payment Recorded! 💰",
+        description: `Payment of $${paymentData.amount} recorded for ${paymentData.name}.`,
+      });
+      
+      // Auto close after success animation
+      setTimeout(() => {
+        handleDialogClose();
+      }, 3000);
+
+    } catch (err: any) {
+      console.error('Payment recording error:', err);
+      toast({
+        title: "Recording Failed",
+        description: err.message || "Unable to record payment. Please try again.",
         variant: "destructive",
       });
       setRecordStep("form");
@@ -131,6 +166,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
     setPaymentDuration("daily");
     setRecordStep("form");
     setSubmitting(false);
+    setSelectedMember(null);
     onOpenChange(false);
   };
 
@@ -181,6 +217,28 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
                   />
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 </div>
+                {/* Show member suggestions */}
+                {members.length > 0 && (
+                  <div className="mt-2 border rounded-lg bg-white shadow-sm max-h-32 overflow-y-auto">
+                    {members.map((member) => (
+                      <div
+                        key={member.id}
+                        className="p-2 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                        onClick={() => {
+                          setSelectedMember(member.id);
+                          setPaymentData(prev => ({
+                            ...prev,
+                            name: member.name,
+                            phone: member.phone || ""
+                          }));
+                        }}
+                      >
+                        <div className="font-medium text-sm">{member.name}</div>
+                        <div className="text-xs text-gray-500">{member.phone || member.email}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Phone Field */}
