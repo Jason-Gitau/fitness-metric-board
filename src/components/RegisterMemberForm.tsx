@@ -73,9 +73,8 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
           name: form.name,
           email: form.email,
           phone: form.phone,
-          join_date: form.join_date.toISOString(),
-          status: form.status,
-          gender: form.gender
+          membership_type: 'daily',
+          status: form.status
         }])
         .select()
         .single();
@@ -128,7 +127,6 @@ const RegisterMemberForm: React.FC<RegisterMemberFormProps> = ({ open, onOpenCha
         .insert({
           member_id: newMemberId,
           amount: amount,
-          period: period,
           start_date: now.toISOString(),
           ending_date: endingDate.toISOString(),
           status: 'complete',

@@ -17,33 +17,21 @@ export type Database = {
       check_ins: {
         Row: {
           check_in_time: string
-          "checkin count": number | null
-          "checkout time": string | null
           created_at: string
-          duration: string | null
           id: string
-          member_id: string | null
-          user_id: string | null
+          member_id: string
         }
         Insert: {
           check_in_time?: string
-          "checkin count"?: number | null
-          "checkout time"?: string | null
-          created_at: string
-          duration?: string | null
+          created_at?: string
           id?: string
-          member_id?: string | null
-          user_id?: string | null
+          member_id: string
         }
         Update: {
           check_in_time?: string
-          "checkin count"?: number | null
-          "checkout time"?: string | null
           created_at?: string
-          duration?: string | null
           id?: string
-          member_id?: string | null
-          user_id?: string | null
+          member_id?: string
         }
         Relationships: [
           {
@@ -58,87 +46,57 @@ export type Database = {
       members: {
         Row: {
           created_at: string
-          email: string
-          gender: string | null
+          email: string | null
           id: string
-          join_date: string
-          last_check_in: string | null
           membership_type: string
           name: string
           phone: string | null
-          status: string | null
+          status: string
           updated_at: string
-          user_id: string | null
         }
         Insert: {
           created_at?: string
-          email: string
-          gender?: string | null
+          email?: string | null
           id?: string
-          join_date?: string
-          last_check_in?: string | null
-          membership_type?: string
+          membership_type: string
           name: string
           phone?: string | null
-          status?: string | null
+          status?: string
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
           created_at?: string
-          email?: string
-          gender?: string | null
+          email?: string | null
           id?: string
-          join_date?: string
-          last_check_in?: string | null
           membership_type?: string
           name?: string
           phone?: string | null
-          status?: string | null
+          status?: string
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: []
       }
       messages: {
         Row: {
+          content: string
           created_at: string
           id: string
-          message: string
-          message_type: string
-          recipient_ids: string[] | null
           recipient_type: string
-          sent_at: string | null
-          status: string | null
-          subject: string | null
           updated_at: string
-          user_id: string | null
         }
         Insert: {
+          content: string
           created_at?: string
           id?: string
-          message: string
-          message_type: string
-          recipient_ids?: string[] | null
           recipient_type: string
-          sent_at?: string | null
-          status?: string | null
-          subject?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
+          content?: string
           created_at?: string
           id?: string
-          message?: string
-          message_type?: string
-          recipient_ids?: string[] | null
           recipient_type?: string
-          sent_at?: string | null
-          status?: string | null
-          subject?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -150,12 +108,10 @@ export type Database = {
           ending_date: string | null
           id: string
           member_id: string | null
-          payment_method: string | null
-          period: string | null
+          payment_method: string
           start_date: string
-          status: string | null
+          status: string
           updated_at: string
-          user_id: string | null
         }
         Insert: {
           amount: number
@@ -164,12 +120,10 @@ export type Database = {
           ending_date?: string | null
           id?: string
           member_id?: string | null
-          payment_method?: string | null
-          period?: string | null
+          payment_method: string
           start_date?: string
-          status?: string | null
+          status?: string
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -178,12 +132,10 @@ export type Database = {
           ending_date?: string | null
           id?: string
           member_id?: string | null
-          payment_method?: string | null
-          period?: string | null
+          payment_method?: string
           start_date?: string
-          status?: string | null
+          status?: string
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: [
           {

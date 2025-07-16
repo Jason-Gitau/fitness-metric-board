@@ -86,10 +86,12 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
         .upsert({
           member_id: currentMember.id,
           amount: parseFloat(paymentData.amount),
-          start_date: currentTime.toISOString().split('T')[0],
+          start_date: currentTime.toISOString(),
           ending_date: endingDate.toISOString(),
-          period: paymentData.period,
-          status: 'complete'
+          payment_method: 'cash',
+          status: 'complete',
+          description: `${paymentData.period} payment during check-in`,
+          updated_at: new Date().toISOString()
         });
 
       if (transactionError) {
@@ -117,63 +119,22 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
 
   const processCheckIn = async () => {
     try {
-      // Get current check-in record
-      const { data: existingCheckIn, error: checkInError } = await supabase
+      // Create new check-in record
+      const { error: checkInError } = await supabase
         .from('check_ins')
-        .select('id, "checkin count"')
-        .eq('member_id', currentMember.id)
-        .maybeSingle();
+        .insert({
+          member_id: currentMember.id,
+          check_in_time: new Date().toISOString()
+        });
 
-      if (checkInError && checkInError.code !== 'PGRST116') {
+      if (checkInError) {
         toast({
-          title: "Database Error",
-          description: "Unable to process check-in. Please try again.",
+          title: "Check-in Failed",
+          description: "Unable to record check-in. Please try again.",
           variant: "destructive",
         });
         setSubmitting(false);
         return;
-      }
-
-      const currentTime = new Date().toISOString();
-
-      // Update or create check-in record
-      if (existingCheckIn) {
-        const { error: updateError } = await supabase
-          .from('check_ins')
-          .update({
-            'checkin count': (existingCheckIn['checkin count'] || 0) + 1,
-            'check_in_time': currentTime
-          })
-          .eq('id', existingCheckIn.id);
-
-        if (updateError) {
-          toast({
-            title: "Check-in Update Failed",
-            description: "Unable to update check-in record.",
-            variant: "destructive",
-          });
-          setSubmitting(false);
-          return;
-        }
-      } else {
-        const { error: insertError } = await supabase
-          .from('check_ins')
-          .insert({
-            member_id: currentMember.id,
-            'checkin count': 1,
-            check_in_time: currentTime,
-            created_at: currentTime
-          });
-
-        if (insertError) {
-          toast({
-            title: "Check-in Creation Failed",
-            description: "Unable to create check-in record.",
-            variant: "destructive",
-          });
-          setSubmitting(false);
-          return;
-        }
       }
 
       setCheckInStep("success");
@@ -266,8 +227,8 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
       const currentTime = new Date();
       
       // Check if payment is valid
-      if (!latestTransaction || !latestTransaction['ending date'] || 
-          new Date(latestTransaction['ending date']) < currentTime) {
+      if (!latestTransaction || !latestTransaction.ending_date || 
+          new Date(latestTransaction.ending_date) < currentTime) {
         
         // Payment expired or doesn't exist - show payment form
         setCheckInStep("payment");

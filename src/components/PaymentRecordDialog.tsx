@@ -126,7 +126,6 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
         .insert({
           member_id: memberId,
           amount: Number(paymentData.amount),
-          period: paymentDuration,
           start_date: startDate.toISOString(),
           ending_date: endDate.toISOString(),
           status: 'complete',
