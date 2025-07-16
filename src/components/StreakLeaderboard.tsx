@@ -56,49 +56,60 @@ function calculateStreakScore(
 }
 
 const StreakLeaderboard = () => {
-  // Fetch members with their check-in counts
-  const { data: memberCheckIns = [], isLoading, error } = useQuery({
-    queryKey: ["member_checkin_counts"],
+  // Fetch member stats with check-in counts and last visit dates
+  const { data: memberStats = [], isLoading, error } = useQuery({
+    queryKey: ["member_streak_stats"],
     queryFn: async () => {
+      // Get all members with their check-in data
       const { data, error } = await supabase
-        .from("check_ins")
+        .from("members")
         .select(`
-          member_id,
-          members(name)
+          id,
+          name,
+          check_ins(check_in_time)
         `);
       if (error) throw error;
-      return data || [];
+      
+      // Process the data to calculate stats for each member
+      return (data || []).map(member => {
+        const checkIns = member.check_ins || [];
+        const totalVisits = checkIns.length;
+        
+        // Find the most recent check-in date
+        let lastVisit = null;
+        if (checkIns.length > 0) {
+          const sortedCheckIns = checkIns.sort((a, b) => 
+            new Date(b.check_in_time).getTime() - new Date(a.check_in_time).getTime()
+          );
+          lastVisit = sortedCheckIns[0].check_in_time;
+        }
+        
+        return {
+          member_id: member.id,
+          full_name: member.name,
+          total_visits: totalVisits,
+          last_visit: lastVisit,
+        };
+      });
     },
   });
 
-  // Calculate leaderboard based on check-in counts
+  // Calculate leaderboard based on streak scores
   const top5: LeaderboardEntry[] = React.useMemo(() => {
-    if (!memberCheckIns.length) return [];
+    if (!memberStats.length) return [];
     
-    // Count check-ins per member
-    const memberStats = memberCheckIns.reduce((acc: Record<string, { name: string, totalCheckins: number }>, checkIn: any) => {
-      const memberId = checkIn.member_id;
-      const memberName = checkIn.members?.name || 'Unknown';
-      
-      if (!acc[memberId]) {
-        acc[memberId] = { name: memberName, totalCheckins: 0 };
-      }
-      
-      acc[memberId].totalCheckins += 1;
-      return acc;
-    }, {});
-    
-    // Convert to leaderboard entries and sort by check-in count
-    return Object.entries(memberStats)
-      .map(([memberId, stats]) => ({
-        member_id: memberId,
-        full_name: stats.name,
-        total_visits: stats.totalCheckins,
-        streak_score: stats.totalCheckins,
+    // Calculate streak score for each member and sort
+    return memberStats
+      .map(member => ({
+        member_id: member.member_id,
+        full_name: member.full_name || 'Unknown',
+        total_visits: member.total_visits || 0,
+        streak_score: calculateStreakScore(member.total_visits, member.last_visit),
       }))
+      .filter(entry => entry.streak_score > 0) // Only show members with positive streak scores
       .sort((a, b) => b.streak_score - a.streak_score)
       .slice(0, 5);
-  }, [memberCheckIns]);
+  }, [memberStats]);
 
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
