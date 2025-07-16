@@ -17,6 +17,7 @@ export interface MemberWithTransaction extends Member {
   transaction?: {
     status: string | null;
     "ending date": string | null;
+    subscription_period?: string | null;
   }[];
 }
 
@@ -42,7 +43,7 @@ export async function fetchMembersWithTransactions(): Promise<MemberWithTransact
   // Get all transactions
   const { data: transactions, error: transactionsError } = await supabase
     .from("transactions")
-    .select("member_id, status, ending_date");
+    .select("member_id, status, ending_date, subscription_period");
 
   if (transactionsError) throw transactionsError;
   
@@ -63,7 +64,8 @@ export async function fetchMembersWithTransactions(): Promise<MemberWithTransact
     if (memberMap.has(txn.member_id)) {
       memberMap.get(txn.member_id)!.transaction!.push({
         status: txn.status,
-        "ending date": txn.ending_date
+        "ending date": txn.ending_date,
+        subscription_period: txn.subscription_period
       });
     }
   });
@@ -103,19 +105,29 @@ export function categorizeMembers(members: MemberWithTransaction[]) {
     }
 
     // Check transaction data for overdue and upcoming renewals
+    // Only apply due/overdue logic for weekly and monthly subscriptions
     if (member.transaction && Array.isArray(member.transaction)) {
       member.transaction.forEach((txn: any) => {
-        // Check for overdue (incomplete/failed payment status)
-        if (txn.status?.toLowerCase() === 'incomplete' || txn.status?.toLowerCase() === 'failed') {
-          result.overdue.push(member);
-        }
+        // Get the subscription period from the transaction
+        const subscriptionPeriod = txn.subscription_period || 'daily';
+        
+        // Only check for due/overdue if it's weekly or monthly subscription
+        if (subscriptionPeriod === 'weekly' || subscriptionPeriod === 'monthly') {
+          // Check for overdue (incomplete/failed payment status)
+          if (txn.status?.toLowerCase() === 'incomplete' || txn.status?.toLowerCase() === 'failed') {
+            result.overdue.push(member);
+          }
 
-        // Check for upcoming renewals (ending date within 7 days but not passed)
-        if (txn["ending date"]) {
-          const endingDate = parseISO(txn["ending date"]);
-          if (isValid(endingDate)) {
-            if (isBefore(today, endingDate) && isBefore(endingDate, upcomingThreshold)) {
-              result.dueSoon.push(member);
+          // Check for upcoming renewals (ending date within 7 days but not passed)
+          if (txn["ending date"]) {
+            const endingDate = parseISO(txn["ending date"]);
+            if (isValid(endingDate)) {
+              if (isBefore(today, endingDate) && isBefore(endingDate, upcomingThreshold)) {
+                result.dueSoon.push(member);
+              } else if (isBefore(endingDate, today)) {
+                // Payment has expired for weekly/monthly subscribers
+                result.overdue.push(member);
+              }
             }
           }
         }

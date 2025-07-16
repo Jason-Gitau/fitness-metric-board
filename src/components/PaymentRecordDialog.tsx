@@ -130,6 +130,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
           ending_date: endDate.toISOString(),
           status: 'complete',
           payment_method: paymentMethod,
+          subscription_period: paymentDuration,
           description: `${paymentDuration} payment recorded manually`,
           updated_at: new Date().toISOString()
         });
@@ -141,7 +142,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
       setRecordStep("success");
       toast({
         title: "Payment Recorded! 💰",
-        description: `Payment of $${paymentData.amount} recorded for ${paymentData.name}.`,
+        description: `Payment of KSh ${paymentData.amount} recorded for ${paymentData.name}.`,
       });
       
       // Auto close after success animation
@@ -267,21 +268,21 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <DollarSign className="w-4 h-4 text-green-600" />
-                  <span>Payment Amount</span>
+                  <span>Payment Amount (KSh)</span>
                 </label>
                 <div className="relative">
                   <Input
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
-                    placeholder="Enter payment amount"
+                    placeholder="Enter amount in Kenyan Shillings"
                     value={paymentData.amount}
                     onChange={(e) => handleInputChange("amount", e.target.value)}
                     disabled={submitting}
                     required
-                    className="pl-10 border-2 focus:border-green-500 transition-all duration-300 hover:shadow-md text-lg font-semibold"
+                    className="pl-12 border-2 focus:border-green-500 transition-all duration-300 hover:shadow-md text-lg font-semibold"
                   />
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium text-muted-foreground">KSh</span>
                 </div>
               </div>
 
@@ -374,7 +375,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
               </div>
               <div className="text-center space-y-2">
                 <p className="font-medium">Recording payment for {paymentData.name}</p>
-                <p className="text-sm text-muted-foreground">Amount: ${paymentData.amount}</p>
+                <p className="text-sm text-muted-foreground">Amount: KSh {paymentData.amount}</p>
               </div>
             </div>
           )}
@@ -397,7 +398,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
               <div className="text-center space-y-2">
                 <p className="font-bold text-lg text-green-700">Payment Recorded!</p>
                 <p className="text-sm text-muted-foreground">
-                  ${paymentData.amount} from {paymentData.name}
+                  KSh {paymentData.amount} from {paymentData.name}
                 </p>
                 <div className="text-xs text-green-600 font-medium">✨ Transaction Complete ✨</div>
               </div>

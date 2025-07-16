@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { UserCheck, Phone, User, Sparkles, CheckCircle, AlertTriangle, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface MemberCheckInDialogProps {
   open: boolean;
@@ -34,6 +35,24 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [checkInStep, setCheckInStep] = useState<"form" | "processing" | "payment" | "success">("form");
   const [currentMember, setCurrentMember] = useState<any>(null);
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
+
+  // Search for existing members
+  const { data: members = [] } = useQuery({
+    queryKey: ["search_members_checkin", memberData.name],
+    queryFn: async () => {
+      if (!memberData.name.trim()) return [];
+      const { data, error } = await supabase
+        .from("members")
+        .select("*")
+        .ilike("name", `%${memberData.name}%`)
+        .eq("status", "active")
+        .limit(5);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: memberData.name.length > 2
+  });
 
   const handleInputChange = (field: string, value: string) => {
     setMemberData(prev => ({
@@ -89,6 +108,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
           start_date: currentTime.toISOString(),
           ending_date: endingDate.toISOString(),
           payment_method: 'cash',
+          subscription_period: paymentData.period,
           status: 'complete',
           description: `${paymentData.period} payment during check-in`,
           updated_at: new Date().toISOString()
@@ -172,13 +192,28 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
     setCheckInStep("processing");
 
     try {
-      // Find the member by name and phone
-      const { data: member, error: memberError } = await supabase
-        .from('members')
-        .select('id, name, phone, status')
-        .eq('name', memberData.name.trim())
-        .eq('phone', memberData.phone.trim())
-        .single();
+      // Use selected member ID if available, otherwise search by name and phone
+      let member: any = null;
+      let memberError: any = null;
+      
+      if (selectedMember) {
+        const { data, error } = await supabase
+          .from('members')
+          .select('id, name, phone, status')
+          .eq('id', selectedMember)
+          .single();
+        member = data;
+        memberError = error;
+      } else {
+        const { data, error } = await supabase
+          .from('members')
+          .select('id, name, phone, status')
+          .eq('name', memberData.name.trim())
+          .eq('phone', memberData.phone.trim())
+          .single();
+        member = data;
+        memberError = error;
+      }
 
       if (memberError || !member) {
         toast({
@@ -256,6 +291,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
     setCheckInStep("form");
     setSubmitting(false);
     setCurrentMember(null);
+    setSelectedMember(null);
     onOpenChange(false);
   };
 
@@ -306,6 +342,28 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
                   />
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 </div>
+                {/* Show member suggestions */}
+                {members.length > 0 && (
+                  <div className="mt-2 border rounded-lg bg-white shadow-sm max-h-32 overflow-y-auto">
+                    {members.map((member) => (
+                      <div
+                        key={member.id}
+                        className="p-2 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                        onClick={() => {
+                          setSelectedMember(member.id);
+                          setMemberData(prev => ({
+                            ...prev,
+                            name: member.name,
+                            phone: member.phone || ""
+                          }));
+                        }}
+                      >
+                        <div className="font-medium text-sm">{member.name}</div>
+                        <div className="text-xs text-gray-500">{member.phone || member.email}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Phone Field */}

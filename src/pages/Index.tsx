@@ -14,6 +14,8 @@ import UpcomingRenewalsTable from "@/components/UpcomingRenewalsTable";
 import InactiveMembersTable from "@/components/InactiveMembersTable";
 import ActiveMembersDialog from "@/components/ActiveMembersDialog";
 import OverdueMembersDialog from "@/components/OverdueMembersDialog";
+import DueMembersDialog from "@/components/DueMembersDialog";
+import InactiveMembersDialog from "@/components/InactiveMembersDialog";
 import StreakLeaderboard from "@/components/StreakLeaderboard";
 import ChatWidget from "@/components/ChatWidget";
 import { useAuthState } from "@/hooks/useAuthState";
@@ -29,6 +31,8 @@ const Index = () => {
 
   const [showActiveDialog, setShowActiveDialog] = useState(false);
   const [showOverdueDialog, setShowOverdueDialog] = useState(false);
+  const [showDueDialog, setShowDueDialog] = useState(false);
+  const [showInactiveDialog, setShowInactiveDialog] = useState(false);
 
   const { user, loading } = useAuthState();
   const navigate = useNavigate();
@@ -66,15 +70,17 @@ const Index = () => {
               bgColor="bg-blue-50"
             />
           </div>
-          {/* Due for Renewal */}
-          <MetricCard
-            title="Due for Renewal"
-            value={categorized ? categorized.dueSoon.length.toString() : "—"}
-            trend={{ value: "", isPositive: false }}
-            subtitle="7 days"
-            icon={<Calendar className="h-5 w-5 text-orange-600" />}
-            bgColor="bg-orange-50"
-          />
+          {/* Due for Renewal (clickable) */}
+          <div className="cursor-pointer" onClick={() => setShowDueDialog(true)}>
+            <MetricCard
+              title="Due for Renewal"
+              value={categorized ? categorized.dueSoon.length.toString() : "—"}
+              trend={{ value: "", isPositive: false }}
+              subtitle="7 days"
+              icon={<Calendar className="h-5 w-5 text-orange-600" />}
+              bgColor="bg-orange-50"
+            />
+          </div>
           {/* Overdue Renewals (clickable) */}
           <div className="cursor-pointer" onClick={() => setShowOverdueDialog(true)}>
             <MetricCard
@@ -86,14 +92,17 @@ const Index = () => {
               bgColor="bg-red-50"
             />
           </div>
-          <MetricCard
-            title="Inactive"
-            value={categorized ? categorized.inactive.length.toString() : "—"}
-            trend={{ value: "", isPositive: false }}
-            subtitle="No visit/expired"
-            icon={<Users className="h-5 w-5 text-gray-400" />}
-            bgColor="bg-gray-100"
-          />
+          {/* Inactive (clickable) */}
+          <div className="cursor-pointer" onClick={() => setShowInactiveDialog(true)}>
+            <MetricCard
+              title="Inactive"
+              value={categorized ? categorized.inactive.length.toString() : "—"}
+              trend={{ value: "", isPositive: false }}
+              subtitle="No visit/expired"
+              icon={<Users className="h-5 w-5 text-gray-400" />}
+              bgColor="bg-gray-100"
+            />
+          </div>
         </div>
 
         {/* Dialogs */}
@@ -108,6 +117,16 @@ const Index = () => {
               open={showOverdueDialog}
               onOpenChange={setShowOverdueDialog}
               members={categorized.overdue}
+            />
+            <DueMembersDialog
+              open={showDueDialog}
+              onOpenChange={setShowDueDialog}
+              members={categorized.dueSoon}
+            />
+            <InactiveMembersDialog
+              open={showInactiveDialog}
+              onOpenChange={setShowInactiveDialog}
+              members={categorized.inactive}
             />
           </>
         )}

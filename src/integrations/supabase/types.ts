@@ -111,6 +111,7 @@ export type Database = {
           payment_method: string
           start_date: string
           status: string
+          subscription_period: string | null
           updated_at: string
         }
         Insert: {
@@ -123,6 +124,7 @@ export type Database = {
           payment_method: string
           start_date?: string
           status?: string
+          subscription_period?: string | null
           updated_at?: string
         }
         Update: {
@@ -135,6 +137,7 @@ export type Database = {
           payment_method?: string
           start_date?: string
           status?: string
+          subscription_period?: string | null
           updated_at?: string
         }
         Relationships: [
