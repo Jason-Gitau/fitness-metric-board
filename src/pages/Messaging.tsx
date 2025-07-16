@@ -62,11 +62,8 @@ const Messaging = () => {
       const { error } = await supabase
         .from("messages")
         .insert({
-          message: message,
-          message_type: messageType,
-          recipient_type: 'members',
-          recipient_ids: selectedMembers,
-          status: 'sent'
+          content: message,
+          recipient_type: messageType
         });
 
       if (error) throw error;

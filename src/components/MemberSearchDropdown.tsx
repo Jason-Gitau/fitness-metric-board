@@ -181,7 +181,7 @@ const MemberSearchDropdown: React.FC<MemberSearchDropdownProps> = ({
                           )}
                         </div>
                         <p className="text-xs text-gray-400">
-                          Joined {formatJoinDate(member.join_date)}
+                          Joined {formatJoinDate(member.created_at)}
                         </p>
                       </div>
                     </div>

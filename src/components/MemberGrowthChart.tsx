@@ -19,8 +19,8 @@ const MemberGrowthChart = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("members")
-        .select("id, join_date")
-        .order("join_date", { ascending: true });
+        .select("id, created_at")
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
@@ -39,13 +39,13 @@ const MemberGrowthChart = () => {
       
       // Count members who joined up to this month (cumulative)
       const cumulativeCount = members.filter(member => {
-        const joinDate = parseISO(member.join_date);
+        const joinDate = parseISO(member.created_at);
         return joinDate <= monthEnd;
       }).length;
 
       // Count new members this month
       const newThisMonth = members.filter(member => {
-        const joinDate = parseISO(member.join_date);
+        const joinDate = parseISO(member.created_at);
         return joinDate >= monthStart && joinDate <= monthEnd;
       }).length;
 

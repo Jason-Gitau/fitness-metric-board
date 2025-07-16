@@ -7,10 +7,13 @@ interface Transaction {
   id: string;
   amount: number;
   member_id: string;
+  payment_method: string;
+  description: string | null;
   start_date: string;
   ending_date: string | null;
   status: string | null;
-  period: string | null;
+  created_at: string;
+  updated_at: string;
   member?: {
     name: string;
     email: string;
@@ -82,9 +85,7 @@ const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
                         </h4>
                         <div className="text-sm text-gray-500 space-y-1">
                           <div>Amount: Ksh {Number(transaction.amount).toLocaleString()}</div>
-                          {transaction.period && (
-                            <div>Period: {transaction.period}</div>
-                          )}
+                          <div>Method: {transaction.payment_method}</div>
                            {transaction.ending_date && !isNaN(new Date(transaction.ending_date).getTime()) && (
                              <div>
                                Expires: {format(new Date(transaction.ending_date), 'MMM d, yyyy')}

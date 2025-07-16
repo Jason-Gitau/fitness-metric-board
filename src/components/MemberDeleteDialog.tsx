@@ -140,7 +140,7 @@ const MemberDeleteDialog: React.FC<MemberDeleteDialogProps> = ({
                     <p className="text-sm text-gray-600">{member.phone}</p>
                   )}
                   <p className="text-xs text-gray-500">
-                    Member since {new Date(member.join_date).toLocaleDateString()}
+                    Member since {new Date(member.created_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>

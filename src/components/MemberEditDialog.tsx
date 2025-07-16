@@ -43,7 +43,7 @@ const MemberEditDialog: React.FC<MemberEditDialogProps> = ({
         name: member.name || '',
         email: member.email || '',
         phone: member.phone || '',
-        gender: member.gender || 'male'
+        gender: 'male'
       });
     }
     setIsSuccess(false);
