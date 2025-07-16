@@ -4,11 +4,11 @@ import { Calendar, DollarSign, User } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Transaction {
-  id: number;
+  id: string;
   amount: number;
-  member_id: number;
-  "start date": string;
-  "ending date": string | null;
+  member_id: string;
+  start_date: string;
+  ending_date: string | null;
   status: string | null;
   period: string | null;
   member?: {
@@ -85,9 +85,9 @@ const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
                           {transaction.period && (
                             <div>Period: {transaction.period}</div>
                           )}
-                           {transaction["ending date"] && !isNaN(new Date(transaction["ending date"]).getTime()) && (
+                           {transaction.ending_date && !isNaN(new Date(transaction.ending_date).getTime()) && (
                              <div>
-                               Expires: {format(new Date(transaction["ending date"]), 'MMM d, yyyy')}
+                               Expires: {format(new Date(transaction.ending_date), 'MMM d, yyyy')}
                              </div>
                            )}
                         </div>
@@ -104,8 +104,8 @@ const DailyTransactionsDialog: React.FC<DailyTransactionsDialogProps> = ({
                         {transaction.status || 'pending'}
                       </div>
                        <div className="text-xs text-gray-500 mt-1">
-                         {transaction["start date"] && !isNaN(new Date(transaction["start date"]).getTime()) 
-                           ? format(new Date(transaction["start date"]), 'h:mm a')
+                         {transaction.start_date && !isNaN(new Date(transaction.start_date).getTime()) 
+                           ? format(new Date(transaction.start_date), 'h:mm a')
                            : 'Invalid time'}
                        </div>
                     </div>

@@ -40,7 +40,7 @@ const MemberDeleteDialog: React.FC<MemberDeleteDialogProps> = ({
       // Delete related records first (check_ins, messages, transactions, bookings)
       await Promise.all([
         supabase.from('check_ins').delete().eq('member_id', member.id),
-        supabase.from('messages').delete().eq('member_id', member.id),
+        supabase.from('messages').delete().contains('recipient_ids', [member.id]),
         supabase.from('transactions').delete().eq('member_id', member.id)
       ]);
 

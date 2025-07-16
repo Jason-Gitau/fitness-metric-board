@@ -14,7 +14,7 @@ type Member = Tables<'members'>;
 const Messaging = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'sms' | 'email'>('sms');
   const [isSending, setIsSending] = useState(false);
@@ -31,7 +31,7 @@ const Messaging = () => {
     },
   });
 
-  const handleMemberToggle = (memberId: number) => {
+  const handleMemberToggle = (memberId: string) => {
     setSelectedMembers(prev => 
       prev.includes(memberId) 
         ? prev.filter(id => id !== memberId)
@@ -51,7 +51,7 @@ const Messaging = () => {
     if (!message.trim() || selectedMembers.length === 0) {
       toast({
         title: "Error",
-        description: "Please select members and enter a message",
+        description: "Please select members and enter a message.",
         variant: "destructive",
       });
       return;
@@ -59,16 +59,15 @@ const Messaging = () => {
 
     setIsSending(true);
     try {
-      // Insert messages into the database
-      const messageData = selectedMembers.map(memberId => ({
-        member_id: memberId,
-        content: message,
-        type: messageType,
-      }));
-
       const { error } = await supabase
         .from("messages")
-        .insert(messageData);
+        .insert({
+          message: message,
+          message_type: messageType,
+          recipient_type: 'members',
+          recipient_ids: selectedMembers,
+          status: 'sent'
+        });
 
       if (error) throw error;
 

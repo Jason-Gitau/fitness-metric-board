@@ -2,7 +2,7 @@ import { differenceInCalendarDays, parseISO, isValid, isBefore, addDays } from "
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Member {
-  id: number;
+  id: string;
   name: string;
   email: string;
   phone?: string | null;
@@ -23,7 +23,7 @@ export interface CategorizationResult {
   dueSoon: Member[];
   overdue: Member[];
   inactive: {
-    id: number;
+    id: string;
     name: string;
     reason: string;
   }[];
@@ -49,7 +49,7 @@ export async function fetchMembersWithTransactions(): Promise<MemberWithTransact
   if (error) throw error;
   
   // Transform the data to group transactions by member
-  const memberMap = new Map<number, MemberWithTransaction>();
+  const memberMap = new Map<string, MemberWithTransaction>();
   
   data?.forEach((txn: any) => {
     const member = txn.members;
