@@ -14,71 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
-      booking: {
-        Row: {
-          class_name: string
-          date: string
-          id: number
-          member_id: number
-          status: string | null
-        }
-        Insert: {
-          class_name: string
-          date: string
-          id?: never
-          member_id: number
-          status?: string | null
-        }
-        Update: {
-          class_name?: string
-          date?: string
-          id?: never
-          member_id?: number
-          status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "booking_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       check_ins: {
         Row: {
-          "check_in date": string | null
-          check_in_time: string | null
-          check_out_time: string | null
-          "checkin count": number | null
-          duration_minutes: number | null
-          id: number
-          "last nudge": string | null
-          member_id: number
-          "total nudges": number | null
+          check_in_time: string
+          created_at: string
+          id: string
+          member_id: string | null
+          user_id: string | null
         }
         Insert: {
-          "check_in date"?: string | null
-          check_in_time?: string | null
-          check_out_time?: string | null
-          "checkin count"?: number | null
-          duration_minutes?: number | null
-          id?: never
-          "last nudge"?: string | null
-          member_id: number
-          "total nudges"?: number | null
+          check_in_time?: string
+          created_at?: string
+          id?: string
+          member_id?: string | null
+          user_id?: string | null
         }
         Update: {
-          "check_in date"?: string | null
-          check_in_time?: string | null
-          check_out_time?: string | null
-          "checkin count"?: number | null
-          duration_minutes?: number | null
-          id?: never
-          "last nudge"?: string | null
-          member_id?: number
-          "total nudges"?: number | null
+          check_in_time?: string
+          created_at?: string
+          id?: string
+          member_id?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -92,97 +48,137 @@ export type Database = {
       }
       members: {
         Row: {
+          created_at: string
           email: string
           gender: string | null
-          id: number
+          id: string
           join_date: string
+          last_check_in: string | null
+          membership_type: string
           name: string
           phone: string | null
           status: string | null
+          updated_at: string
+          user_id: string | null
         }
         Insert: {
+          created_at?: string
           email: string
           gender?: string | null
-          id?: never
-          join_date: string
+          id?: string
+          join_date?: string
+          last_check_in?: string | null
+          membership_type?: string
           name: string
           phone?: string | null
           status?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Update: {
+          created_at?: string
           email?: string
           gender?: string | null
-          id?: never
+          id?: string
           join_date?: string
+          last_check_in?: string | null
+          membership_type?: string
           name?: string
           phone?: string | null
           status?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
       messages: {
         Row: {
-          content: string
-          id: number
-          member_id: number
+          created_at: string
+          id: string
+          message: string
+          message_type: string
+          recipient_ids: string[] | null
+          recipient_type: string
           sent_at: string | null
-          type: string
+          status: string | null
+          subject: string | null
+          updated_at: string
+          user_id: string | null
         }
         Insert: {
-          content: string
-          id?: never
-          member_id: number
+          created_at?: string
+          id?: string
+          message: string
+          message_type: string
+          recipient_ids?: string[] | null
+          recipient_type: string
           sent_at?: string | null
-          type: string
+          status?: string | null
+          subject?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Update: {
-          content?: string
-          id?: never
-          member_id?: number
+          created_at?: string
+          id?: string
+          message?: string
+          message_type?: string
+          recipient_ids?: string[] | null
+          recipient_type?: string
           sent_at?: string | null
-          type?: string
+          status?: string | null
+          subject?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "messages_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      transaction: {
+      transactions: {
         Row: {
           amount: number
-          "ending date": string | null
-          id: number
-          member_id: number
+          created_at: string
+          description: string | null
+          ending_date: string | null
+          id: string
+          member_id: string | null
+          payment_method: string | null
           period: string | null
-          "start date": string
+          start_date: string
           status: string | null
+          updated_at: string
+          user_id: string | null
         }
         Insert: {
           amount: number
-          "ending date"?: string | null
-          id?: never
-          member_id: number
+          created_at?: string
+          description?: string | null
+          ending_date?: string | null
+          id?: string
+          member_id?: string | null
+          payment_method?: string | null
           period?: string | null
-          "start date": string
+          start_date?: string
           status?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
-          "ending date"?: string | null
-          id?: never
-          member_id?: number
+          created_at?: string
+          description?: string | null
+          ending_date?: string | null
+          id?: string
+          member_id?: string | null
+          payment_method?: string | null
           period?: string | null
-          "start date"?: string
+          start_date?: string
           status?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "transaction_member_id_fkey"
+            foreignKeyName: "transactions_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
