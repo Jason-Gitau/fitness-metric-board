@@ -297,7 +297,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className="sm:max-w-md w-[95vw] max-w-md mx-auto overflow-hidden">
+      <DialogContent className="sm:max-w-md w-[95vw] max-w-md mx-auto overflow-hidden" aria-describedby="checkin-description">
         {/* Animated background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 animate-pulse"></div>
         
@@ -315,7 +315,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
               {checkInStep === "payment" && "Payment Required"}
               {checkInStep === "success" && "Welcome!"}
             </DialogTitle>
-            <DialogDescription className="text-center text-sm sm:text-base">
+            <DialogDescription id="checkin-description" className="text-center text-sm sm:text-base">
               {checkInStep === "form" && "Enter your details to check in"}
               {checkInStep === "processing" && "Verifying your membership details"}
               {checkInStep === "payment" && "Your payment has expired. Please update your payment to continue."}

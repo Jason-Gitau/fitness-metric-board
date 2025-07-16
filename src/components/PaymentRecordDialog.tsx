@@ -175,7 +175,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className="sm:max-w-md mx-auto overflow-hidden">
+      <DialogContent className="sm:max-w-md mx-auto overflow-hidden" aria-describedby="payment-description">
         {/* Animated money background */}
         <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 animate-pulse"></div>
         <div className="absolute top-4 right-4 opacity-10">
@@ -194,7 +194,7 @@ const PaymentRecordDialog: React.FC<PaymentRecordDialogProps> = ({
               {recordStep === "processing" && "Processing..."}
               {recordStep === "success" && "Payment Recorded!"}
             </DialogTitle>
-            <DialogDescription className="text-center">
+            <DialogDescription id="payment-description" className="text-center">
               {recordStep === "form" && "Enter member payment details"}
               {recordStep === "processing" && "Recording payment information"}
               {recordStep === "success" && "Payment has been successfully recorded!"}
