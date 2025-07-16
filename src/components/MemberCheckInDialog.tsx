@@ -196,28 +196,29 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!memberData.name.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter a member name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
     setCheckInStep("processing");
 
     try {
+      console.log("Starting member check-in process for:", memberData.name);
+      
+      // Step 1: Check if member exists in members table
       let member: any = null;
       
       if (selectedMember) {
         // Get selected member from dropdown
         member = members.find(m => m.id === selectedMember);
-        if (!member) {
-          console.error('Selected member not found in members list:', selectedMember);
-          toast({
-            title: "Member Not Found",
-            description: "Selected member could not be found.",
-            variant: "destructive",
-          });
-          setSubmitting(false);
-          setCheckInStep("form");
-          return;
-        }
-      } else if (memberData.name.trim()) {
-        // Search for member by name (phone is optional for search)
+      } else {
+        // Search for member by name
         const searchQuery = supabase
           .from("members")
           .select("*")
@@ -243,22 +244,14 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
           return;
         }
 
-        if (!memberDataResult) {
-          toast({
-            title: "Member Not Found",
-            description: "No active member found with this name. Please check the spelling or register the member first.",
-            variant: "destructive",
-          });
-          setSubmitting(false);
-          setCheckInStep("form");
-          return;
-        }
-
         member = memberDataResult;
-      } else {
+      }
+
+      if (!member) {
+        console.log("Member not found in database");
         toast({
-          title: "Missing Information",
-          description: "Please enter a member name or select from the dropdown.",
+          title: "Member Not Found",
+          description: "No active member found with this name. Please check the spelling or register the member first.",
           variant: "destructive",
         });
         setSubmitting(false);
@@ -266,10 +259,10 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
         return;
       }
 
-      setCurrentMember(member);
       console.log('Found member for check-in:', member.name, member.id);
+      setCurrentMember(member);
 
-      // Check for valid payment/subscription
+      // Step 2: Check transactions table to verify payment is not overdue
       const { data: latestTransaction, error: transactionError } = await supabase
         .from('transactions')
         .select('*')
@@ -291,13 +284,13 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
         return;
       }
 
-      // Get current time in UTC for consistent comparison
       const currentTime = new Date();
       console.log('Current time:', currentTime.toISOString());
       console.log('Latest transaction:', latestTransaction);
       
       // Check if member has valid payment (not overdue)
       if (!latestTransaction) {
+        console.log("No payment found for member");
         toast({
           title: "Check-In Denied ❌",
           description: `${member.name} has no payment records. Please process payment before checking in.`,
@@ -309,6 +302,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
       }
 
       if (!latestTransaction.ending_date) {
+        console.log("Invalid payment data for member");
         toast({
           title: "Check-In Denied ❌",
           description: `${member.name} has invalid payment data. Please update payment information.`,
@@ -324,6 +318,7 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
       
       if (endingDate < currentTime) {
         const daysOverdue = Math.ceil((currentTime.getTime() - endingDate.getTime()) / (1000 * 60 * 60 * 24));
+        console.log(`Payment is overdue by ${daysOverdue} days`);
         toast({
           title: "Check-In Denied ❌",
           description: `${member.name} payment expired ${daysOverdue} day(s) ago. Please update payment before checking in.`,
@@ -334,9 +329,42 @@ const MemberCheckInDialog: React.FC<MemberCheckInDialogProps> = ({
         return;
       }
 
-      // Member has valid payment - proceed with check-in
+      // Step 3: All checks passed - record check-in in check_ins table
       console.log('Payment valid, proceeding with check-in for member:', member.name);
-      await processCheckIn();
+      
+      const { error: checkInError } = await supabase
+        .from("check_ins")
+        .insert([{
+          member_id: member.id,
+          check_in_time: new Date().toISOString(),
+        }]);
+
+      if (checkInError) {
+        console.error("Error recording check-in:", checkInError);
+        toast({
+          title: "Check-In Failed",
+          description: "Unable to record check-in. Please try again.",
+          variant: "destructive",
+        });
+        setCheckInStep("form");
+        setSubmitting(false);
+        return;
+      }
+
+      console.log("Check-in recorded successfully for member:", member.name);
+      
+      // Success
+      toast({
+        title: "Check-In Successful! ✅",
+        description: `Welcome ${member.name}! You're all checked in.`,
+      });
+      setCheckInStep("success");
+      setSubmitting(false);
+
+      // Auto-close after 2 seconds
+      setTimeout(() => {
+        handleDialogClose();
+      }, 2000);
       
     } catch (error) {
       console.error("Check-in error:", error);
