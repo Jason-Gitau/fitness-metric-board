@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -10,20 +10,46 @@ import {
 } from 'recharts';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, DollarSign } from "lucide-react";
-import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from 'date-fns';
+import { Loader2, TrendingUp } from "lucide-react";
+import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, startOfDay, endOfDay } from 'date-fns';
+import DailyTransactionsDialog from './DailyTransactionsDialog';
 
 const RevenueChart = () => {
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showDailyDialog, setShowDailyDialog] = useState(false);
   const { data: transactions = [], isLoading, error } = useQuery({
     queryKey: ["revenue_data"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transaction")
-        .select("amount, \"start date\", status")
+        .select("*, member_id")
         .order("\"start date\"", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
+  });
+
+  // Fetch daily transactions when a date is selected
+  const { data: dailyTransactions = [] } = useQuery({
+    queryKey: ["daily_transactions", selectedDate],
+    queryFn: async () => {
+      if (!selectedDate) return [];
+      
+      const startDate = startOfDay(new Date(selectedDate));
+      const endDate = endOfDay(new Date(selectedDate));
+      
+      const { data, error } = await supabase
+        .from("transaction")
+        .select("*")
+        .gte("start date", startDate.toISOString())
+        .lte("start date", endDate.toISOString())
+        .neq("status", "incomplete")
+        .order("start date", { ascending: true });
+        
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!selectedDate,
   });
 
   const revenueData = React.useMemo(() => {
@@ -51,6 +77,7 @@ const RevenueChart = () => {
         month: format(month, 'MMM yyyy'),
         revenue: totalRevenue,
         transactions: transactionCount,
+        date: format(monthStart, 'yyyy-MM-dd'),
       };
     });
 
@@ -77,7 +104,7 @@ const RevenueChart = () => {
           <p className="text-sm text-gray-500">Avg Monthly: Ksh {Math.round(averageMonthlyRevenue).toLocaleString()}</p>
         </div>
         <div className="flex items-center text-green-600">
-          <DollarSign className="h-4 w-4 mr-1" />
+          <TrendingUp className="h-4 w-4 mr-1" />
           <span className="text-sm font-medium">Ksh {currentMonthRevenue.toLocaleString()} this month</span>
         </div>
       </div>
@@ -111,17 +138,33 @@ const RevenueChart = () => {
                   name === 'revenue' ? `Ksh ${value.toLocaleString()}` : value,
                   name === 'revenue' ? 'Revenue' : 'Transactions'
                 ]}
+                cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
               />
               <Bar
                 dataKey="revenue"
                 fill="#10b981"
                 radius={[4, 4, 0, 0]}
                 name="revenue"
+                className="cursor-pointer"
+                onClick={(data) => {
+                  if (data && data.date) {
+                    setSelectedDate(data.date);
+                    setShowDailyDialog(true);
+                  }
+                }}
               />
             </BarChart>
           </ResponsiveContainer>
         )}
       </div>
+      
+      {/* Daily Transactions Dialog */}
+      <DailyTransactionsDialog
+        open={showDailyDialog}
+        onOpenChange={setShowDailyDialog}
+        date={selectedDate || ''}
+        transactions={dailyTransactions}
+      />
     </div>
   );
 };

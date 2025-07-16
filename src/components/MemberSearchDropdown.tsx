@@ -104,7 +104,7 @@ const MemberSearchDropdown: React.FC<MemberSearchDropdownProps> = ({
   };
 
   return (
-    <div ref={searchRef} className="relative flex-1 max-w-lg mx-8">
+    <div ref={searchRef} className="relative w-full">
       <div className="relative group">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 transition-colors group-focus-within:text-blue-500" />
         <input

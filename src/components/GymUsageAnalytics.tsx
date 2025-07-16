@@ -108,7 +108,7 @@ const GymUsageAnalytics = () => {
               <div className="flex items-center">
                 <Activity className="h-5 w-5 text-blue-600 mr-2" />
                 <div>
-                  <p className="text-sm text-blue-600">Total Sessions</p>
+                  <p className="text-sm text-blue-600">Total Check Ins</p>
                   <p className="text-xl font-bold text-blue-800">{analytics.totalSessions}</p>
                 </div>
               </div>

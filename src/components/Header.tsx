@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, Menu, LogOut, LogIn } from 'lucide-react';
+import { Bell, Menu, LogOut, LogIn, Search } from 'lucide-react';
 import RegisterMemberForm from './RegisterMemberForm';
 import MemberCheckInDialog from './MemberCheckInDialog';
 import PaymentRecordDialog from './PaymentRecordDialog';
@@ -23,6 +23,7 @@ const Header = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const { user, loading } = useAuthState();
   const navigate = useNavigate();
 
@@ -78,16 +79,31 @@ const Header = () => {
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
             <span className="text-white font-bold text-sm">G</span>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900">Gym CRM Dashboard</h1>
+          <h1 className="text-lg md:text-xl font-semibold text-gray-900 hidden sm:block">Gym CRM Dashboard</h1>
+          <h1 className="text-lg font-semibold text-gray-900 sm:hidden">Gym CRM</h1>
         </div>
         {/* Search Bar */}
-        <MemberSearchDropdown 
-          onMemberSelect={handleMemberSelect}
-          onMemberDelete={handleMemberDelete}
-        />
+        <div className="hidden md:block flex-1 max-w-lg mx-8">
+          <MemberSearchDropdown 
+            onMemberSelect={handleMemberSelect}
+            onMemberDelete={handleMemberDelete}
+          />
+        </div>
         {/* Actions/Notifications + Hamburger */}
-        <div className="flex items-center space-x-4">
-          <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+        <div className="flex items-center space-x-2 md:space-x-4">
+          {/* Mobile Search Button */}
+          <button 
+            className="md:hidden p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            title="Search Members"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+          <button 
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={() => navigate('/messaging')}
+            title="Send Messages"
+          >
             <Bell className="h-5 w-5" />
           </button>
           {/* Show Login/Logout */}
@@ -152,6 +168,23 @@ const Header = () => {
           </div>
         </div>
       </div>
+      
+      {/* Mobile Search Bar */}
+      {showMobileSearch && (
+        <div className="md:hidden px-4 py-3 border-t border-gray-200 bg-white">
+          <MemberSearchDropdown 
+            onMemberSelect={(member) => {
+              handleMemberSelect(member);
+              setShowMobileSearch(false);
+            }}
+            onMemberDelete={(member) => {
+              handleMemberDelete(member);
+              setShowMobileSearch(false);
+            }}
+          />
+        </div>
+      )}
+      
       {/* Register Drawer */}
       <RegisterMemberForm open={drawerOpen} onOpenChange={setDrawerOpen} />
       {/* Member Check-In Dialog */}
