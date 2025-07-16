@@ -56,43 +56,35 @@ function calculateStreakScore(
 }
 
 const StreakLeaderboard = () => {
-  // Fetch members with their total check-in counts
-  const { data: members = [], isLoading, error } = useQuery({
-    queryKey: ["members", "checkin_leaderboard"],
+  // Fetch members with their check-in counts
+  const { data: memberCheckIns = [], isLoading, error } = useQuery({
+    queryKey: ["member_checkin_counts"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("members")
+        .from("check_ins")
         .select(`
-          id,
-          name,
-          check_ins!inner("checkin count")
+          member_id,
+          members(name)
         `);
       if (error) throw error;
-      return data ?? [];
+      return data || [];
     },
   });
 
   // Calculate leaderboard based on check-in counts
   const top5: LeaderboardEntry[] = React.useMemo(() => {
-    if (!members.length) return [];
+    if (!memberCheckIns.length) return [];
     
-    // Aggregate check-in counts for each member
-    const memberStats = members.reduce((acc: Record<string, { name: string, totalCheckins: number }>, member: any) => {
-      const memberId = member.id.toString();
-      const memberName = member.name;
+    // Count check-ins per member
+    const memberStats = memberCheckIns.reduce((acc: Record<string, { name: string, totalCheckins: number }>, checkIn: any) => {
+      const memberId = checkIn.member_id;
+      const memberName = checkIn.members?.name || 'Unknown';
       
       if (!acc[memberId]) {
         acc[memberId] = { name: memberName, totalCheckins: 0 };
       }
       
-      // Sum up all checkin counts for this member
-      if (member.check_ins && Array.isArray(member.check_ins)) {
-        member.check_ins.forEach((checkin: any) => {
-          const checkinCount = checkin["checkin count"] || 0;
-          acc[memberId].totalCheckins += checkinCount;
-        });
-      }
-      
+      acc[memberId].totalCheckins += 1;
       return acc;
     }, {});
     
@@ -102,11 +94,11 @@ const StreakLeaderboard = () => {
         member_id: memberId,
         full_name: stats.name,
         total_visits: stats.totalCheckins,
-        streak_score: stats.totalCheckins, // Use checkin count as streak score
+        streak_score: stats.totalCheckins,
       }))
       .sort((a, b) => b.streak_score - a.streak_score)
       .slice(0, 5);
-  }, [members]);
+  }, [memberCheckIns]);
 
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">

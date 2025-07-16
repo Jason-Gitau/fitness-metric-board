@@ -8,7 +8,9 @@ export interface Member {
   phone?: string | null;
   join_date: string;
   status?: string | null;
-  Birthdate?: string | null;
+  created_at: string;
+  updated_at: string;
+  membership_type: string;
 }
 
 export interface MemberWithTransaction extends Member {
@@ -30,42 +32,40 @@ export interface CategorizationResult {
 }
 
 export async function fetchMembersWithTransactions(): Promise<MemberWithTransaction[]> {
-  // Read directly from transactions table to get accurate renewal data
-  const { data, error } = await supabase
-    .from("transactions")
-    .select(`
-      status,
-      ending_date,
-      members!inner(
-        id,
-        name,
-        email,
-        phone,
-        join_date,
-        status
-      )
-    `);
+  // Get all members first
+  const { data: members, error: membersError } = await supabase
+    .from("members")
+    .select("*");
 
-  if (error) throw error;
+  if (membersError) throw membersError;
+
+  // Get all transactions
+  const { data: transactions, error: transactionsError } = await supabase
+    .from("transactions")
+    .select("member_id, status, ending_date");
+
+  if (transactionsError) throw transactionsError;
   
-  // Transform the data to group transactions by member
+  // Transform the data to include transactions for each member
   const memberMap = new Map<string, MemberWithTransaction>();
   
-  data?.forEach((txn: any) => {
-    const member = txn.members;
-    const memberId = member.id;
-    
-    if (!memberMap.has(memberId)) {
-      memberMap.set(memberId, {
-        ...member,
-        transaction: []
+  // Initialize all members
+  members?.forEach((member: any) => {
+    memberMap.set(member.id, {
+      ...member,
+      join_date: member.created_at, // Use created_at as join_date
+      transaction: []
+    });
+  });
+  
+  // Add transactions to relevant members
+  transactions?.forEach((txn: any) => {
+    if (memberMap.has(txn.member_id)) {
+      memberMap.get(txn.member_id)!.transaction!.push({
+        status: txn.status,
+        "ending date": txn.ending_date
       });
     }
-    
-    memberMap.get(memberId)!.transaction!.push({
-      status: txn.status,
-      "ending date": txn.ending_date
-    });
   });
   
   return Array.from(memberMap.values());
